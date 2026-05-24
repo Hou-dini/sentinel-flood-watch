@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sentinel Flood-Watch Dashboard</title>
+    <!-- Google Fonts: Outfit for headers, Inter for body -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <script src="https://kit.fontawesome.com/0c13a9f144.js" crossorigin="anonymous"></script>
+    <!-- Leaflet CSS for Map -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <link rel="stylesheet" href="index.css">
+</head>
+<body class="dark-mode">
+    <header class="main-header">
+        <div class="logo-container">
+            <div class="logo-glow"></div>
+            <i class="fa-solid fa-satellite-dish pulse-icon"></i>
+            <h1>Sentinel <span>Flood-Watch</span></h1>
+        </div>
+        <div class="header-status">
+            <span class="status-indicator online"></span>
+            <span class="status-text">Accra Waterway Monitor: Active</span>
+        </div>
+    </header>
+
+    <main class="dashboard-grid">
+        <!-- Column 1: Left Control panel and Alert Feed -->
+        <section class="panel glass-panel left-panel">
+            <div class="panel-header">
+                <i class="fa-solid fa-triangle-exclamation text-alert"></i>
+                <h2>Active Alerts</h2>
+            </div>
+            <div class="alert-list-container">
+                <div class="alert-list" id="alert-list">
+                    <!-- Dynamic Alert Cards go here -->
+                    <div class="loading-spinner">
+                        <i class="fa-solid fa-circle-notch fa-spin"></i> Loading alerts...
+                    </div>
+                </div>
+            </div>
+            <div class="zone-quick-select">
+                <h3>Quick Select Risk Zones</h3>
+                <div class="zone-buttons">
+                    <button class="zone-btn" onclick="focusZone('korle lagoon')">Korle Lagoon</button>
+                    <button class="zone-btn" onclick="focusZone('odaw river')">Odaw River</button>
+                    <button class="zone-btn" onclick="focusZone('sakumo ramsar site')">Sakumo Ramsar</button>
+                    <button class="zone-btn" onclick="focusZone('densu delta ramsar site')">Densu Delta</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Column 2: Central Map & Imagery Split Slider -->
+        <section class="central-container">
+            <!-- Map Panel -->
+            <div class="panel glass-panel map-panel">
+                <div id="map"></div>
+            </div>
+
+            <!-- Satellite Imagery split slider panel -->
+            <div class="panel glass-panel split-panel">
+                <div class="panel-header-split">
+                    <div class="split-title">
+                        <i class="fa-solid fa-images"></i>
+                        <h2>Satellite Image Comparison</h2>
+                        <span id="current-comparison-site" class="badge">No Scan Loaded</span>
+                    </div>
+                    <div class="imagery-tabs">
+                        <button class="tab-btn active" data-view="rgb">True Color RGB</button>
+                        <button class="tab-btn" data-view="ndvi">NDVI (Vegetation Loss)</button>
+                        <button class="tab-btn" data-view="mndwi">MNDWI (Water Channel)</button>
+                    </div>
+                </div>
+                
+                <div class="comparison-slider-container">
+                    <div class="comparison-slider" id="comparison-slider">
+                        <!-- Before Image -->
+                        <div class="slider-image baseline-container">
+                            <img id="baseline-img" src="placeholder_baseline.png" alt="Historical Satellite Imagery">
+                            <div class="image-label label-left">Baseline (Historical)</div>
+                        </div>
+                        <!-- After Image -->
+                        <div class="slider-image current-container">
+                            <img id="current-img" src="placeholder_current.png" alt="Current Satellite Imagery">
+                            <div class="image-label label-right">Current (Satellite Scan)</div>
+                        </div>
+                        <!-- Slider handle bar -->
+                        <div class="slider-handle" id="slider-handle">
+                            <div class="handle-arrow-left"><i class="fa-solid fa-caret-left"></i></div>
+                            <div class="handle-line"></div>
+                            <div class="handle-arrow-right"><i class="fa-solid fa-caret-right"></i></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Column 3: AI Agent Chat -->
+        <section class="panel glass-panel chat-panel">
+            <div class="panel-header">
+                <i class="fa-solid fa-brain-circuit text-brain"></i>
+                <h2>Sentinel Flood-Watch Agent</h2>
+            </div>
+            
+            <div class="agent-trace-container" id="agent-trace-container">
+                <div class="trace-header">
+                    <span><i class="fa-solid fa-terminal"></i> Agent Execution Trace</span>
+                    <button class="toggle-trace-btn" id="toggle-trace-btn"><i class="fa-solid fa-chevron-down"></i></button>
+                </div>
+                <div class="trace-log" id="trace-log">
+                    <div class="trace-entry system">Tracer initialized. Waiting for prompt...</div>
+                </div>
+            </div>
+
+            <div class="chat-messages" id="chat-messages">
+                <div class="chat-bubble agent">
+                    <div class="bubble-content">
+                        Hello! I am the **Sentinel Flood-Watch AI Agent**. I proactively monitor Accra's waterways and Ramsar sites for unauthorized building structures and illegal waste dumping using Sentinel-2 satellite data.
+                        <br><br>
+                        Ask me to:
+                        <ul>
+                            <li>*"Scan the Sakumo Ramsar Site for illegal buildings"*</li>
+                            <li>*"Check Korle Lagoon for waterways blockage"*</li>
+                            <li>*"Search for active alerts in Densu Delta"*</li>
+                        </ul>
+                    </div>
+                    <div class="bubble-meta">Agent • Just Now</div>
+                </div>
+            </div>
+
+            <div class="chat-input-area">
+                <div class="input-glow"></div>
+                <textarea id="chat-input" placeholder="Type instructions for the monitoring agent..." rows="1"></textarea>
+                <button id="chat-send-btn" class="send-btn"><i class="fa-solid fa-paper-plane"></i></button>
+            </div>
+        </section>
+    </main>
+    <script src="index.js"></script>
+</body>
+</html>

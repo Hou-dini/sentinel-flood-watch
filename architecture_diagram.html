@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sentinel Flood-Watch - Architecture Diagram</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;700&family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <style>
+    :root {
+      --bg-color: #0b0f19;
+      --panel-bg: rgba(17, 24, 39, 0.7);
+      --border-color: rgba(255, 255, 255, 0.08);
+      --text-primary: #f3f4f6;
+      --text-secondary: #9ca3af;
+      --accent-color: #10b981; /* Emerald/Sentinel Green */
+      --accent-glow: rgba(16, 185, 129, 0.15);
+      --font-title: 'Space Grotesk', sans-serif;
+      --font-body: 'Outfit', sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-primary);
+      font-family: var(--font-body);
+      overflow: hidden;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Ambient Background Glows */
+    .bg-glow-1 {
+      position: absolute;
+      top: -10%;
+      left: -10%;
+      width: 50vw;
+      height: 50vh;
+      background: radial-gradient(circle, rgba(16, 185, 129, 0.08) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .bg-glow-2 {
+      position: absolute;
+      bottom: -10%;
+      right: -10%;
+      width: 60vw;
+      height: 60vh;
+      background: radial-gradient(circle, rgba(2, 136, 209, 0.05) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    /* Header */
+    header {
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      background-color: var(--panel-bg);
+      border-bottom: 1px solid var(--border-color);
+      padding: 1rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 10;
+    }
+
+    .brand-title {
+      font-family: var(--font-title);
+      font-size: 1.5rem;
+      font-weight: 700;
+      letter-spacing: -0.05em;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .brand-title span {
+      color: var(--accent-color);
+      text-shadow: 0 0 12px var(--accent-glow);
+    }
+
+    .badge {
+      background-color: var(--accent-glow);
+      color: var(--accent-color);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .actions {
+      display: flex;
+      gap: 1rem;
+    }
+
+    .btn {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-color);
+      color: var(--text-primary);
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      cursor: pointer;
+      font-family: var(--font-body);
+      font-size: 0.875rem;
+      font-weight: 500;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: var(--text-secondary);
+      transform: translateY(-1px);
+    }
+
+    .btn-primary {
+      background: var(--accent-color);
+      border-color: var(--accent-color);
+      color: #000;
+      font-weight: 600;
+    }
+
+    .btn-primary:hover {
+      background: #059669;
+      border-color: #059669;
+      box-shadow: 0 0 15px rgba(16, 185, 129, 0.4);
+    }
+
+    /* Layout Containers */
+    .workspace {
+      flex: 1;
+      display: flex;
+      position: relative;
+      overflow: hidden;
+      z-index: 2;
+    }
+
+    /* Diagram Canvas */
+    .canvas-container {
+      flex: 1;
+      padding: 2rem;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      overflow: auto;
+      position: relative;
+      cursor: grab;
+      user-select: none;
+    }
+
+    .canvas-container:active {
+      cursor: grabbing;
+    }
+
+    #diagram {
+      transform-origin: center center;
+      transition: transform 0.1s ease-out;
+    }
+
+    /* Sidebar info panel */
+    .sidebar {
+      width: 350px;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      background-color: var(--panel-bg);
+      border-left: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      overflow-y: auto;
+      z-index: 5;
+    }
+
+    .sidebar-header {
+      padding: 1.5rem;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .sidebar-header h2 {
+      font-family: var(--font-title);
+      font-size: 1.25rem;
+      font-weight: 600;
+    }
+
+    .sidebar-content {
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: flex-start;
+      gap: 1.5rem;
+      flex-direction: column;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75rem;
+    }
+
+    .legend-color {
+      width: 16px;
+      height: 16px;
+      border-radius: 4px;
+      margin-top: 0.2rem;
+      flex-shrink: 0;
+    }
+
+    .color-client { background-color: #e1f5fe; border: 1px solid #0288d1; }
+    .color-api { background-color: #e8f5e9; border: 1px solid #388e3c; }
+    .color-agent { background-color: #f3e5f5; border: 1px solid #7b1fa2; }
+    .color-data { background-color: #fff3e0; border: 1px solid #f57c00; }
+    .color-telemetry { background-color: #eceff1; border: 1px solid #455a64; }
+
+    .legend-details h3 {
+      font-size: 0.95rem;
+      font-weight: 600;
+      margin-bottom: 0.25rem;
+    }
+
+    .legend-details p {
+      font-size: 0.825rem;
+      color: var(--text-secondary);
+      line-height: 1.4;
+    }
+
+    /* Controls Panel */
+    .controls {
+      position: absolute;
+      bottom: 2rem;
+      left: 2rem;
+      background: var(--panel-bg);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 0.5rem;
+      display: flex;
+      gap: 0.5rem;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+      z-index: 10;
+    }
+
+    .control-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-primary);
+      width: 40px;
+      height: 40px;
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+      transition: all 0.2s ease;
+    }
+
+    .control-btn:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--accent-color);
+    }
+
+    /* Scrollbars customization */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-glow-1"></div>
+  <div class="bg-glow-2"></div>
+
+  <header>
+    <div class="brand-title">
+      <span>Sentinel</span> Flood-Watch
+      <span class="badge">Architecture</span>
+    </div>
+    <div class="actions">
+      <button class="btn" onclick="resetZoom()">Fit Canvas</button>
+      <button class="btn btn-primary" onclick="window.print()">Export PDF</button>
+    </div>
+  </header>
+
+  <div class="workspace">
+    <div class="controls">
+      <button class="control-btn" onclick="zoomIn()" title="Zoom In">+</button>
+      <button class="control-btn" onclick="zoomOut()" title="Zoom Out">-</button>
+      <button class="control-btn" onclick="resetZoom()" title="Reset Zoom">⟲</button>
+    </div>
+
+    <div class="canvas-container" id="canvas">
+      <div id="diagram" class="mermaid">
+        graph TD
+          %% Define Styling and Classes
+          classDef frontend fill:#e1f5fe,stroke:#0288d1,stroke-width:2px,color:#01579b;
+          classDef backend fill:#e8f5e9,stroke:#388e3c,stroke-width:2px,color:#1b5e20;
+          classDef agent fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#4a148c;
+          classDef data fill:#fff3e0,stroke:#f57c00,stroke-width:2px,color:#e65100;
+          classDef telemetry fill:#eceff1,stroke:#455a64,stroke-width:2px,color:#263238;
+
+          %% Frontend Components
+          subgraph Frontend ["Client Layer (Frontend)"]
+              UI["index.html (Dashboard UI)"]:::frontend
+              CSS["index.css (Styling)"]:::frontend
+              JS["index.js (App Logic)"]:::frontend
+              UI --> JS
+              CSS -.-> UI
+          end
+
+          %% Backend Components
+          subgraph Backend ["API Layer (FastAPI Backend)"]
+              API["main.py (FastAPI App)"]:::backend
+              Static["/static (Mock Imagery Server)"]:::backend
+              Session["InMemorySessionService"]:::backend
+          end
+
+          %% Agent Components
+          subgraph AgentLayer ["AI Agent Layer (Google ADK)"]
+              ADKApp["App (sentinel_flood_watch_app)"]:::agent
+              ADKRunner["Runner (ADK Orchestrator)"]:::agent
+              Agent["Agent (sentinel_flood_watch_agent)"]:::agent
+              Model["Gemini Model (gemini-3-flash-preview)"]:::agent
+              
+              ADKApp --> ADKRunner
+              ADKRunner --> Agent
+              Agent --> Model
+          end
+
+          %% Tools Components
+          subgraph Tools ["Agent Tools (tools.py)"]
+              ScanTool["scan_zone_tool"]:::agent
+              SendTool["send_alert_tool"]:::agent
+              SearchTool["search_alerts_tool"]:::agent
+          end
+
+          %% Data Components
+          subgraph Data ["Data & Integration Layer"]
+              DB["database.py (Database Interface)"]:::data
+              Mongo["MongoDB Atlas"]:::data
+              JSON["Local Storage (alerts_db.json)"]:::data
+              GEE["Google Earth Engine API"]:::data
+              Pillow["Pillow Mock Generator"]:::data
+              
+              DB --> Mongo
+              DB -.->|Fallback| JSON
+          end
+
+          %% Telemetry Components
+          subgraph Observability ["Observability & Telemetry"]
+              Tel["telemetry.py / agent_engine_app.py"]:::telemetry
+              Arize["Arize Phoenix (OTEL Tracing)"]:::telemetry
+              GCS["GCS Bucket (Agent Engine Logs)"]:::telemetry
+              
+              Tel --> Arize
+              Tel --> GCS
+          end
+
+          %% Inter-component Relationships
+          JS -- "HTTP GET /api/v1/alerts" --> API
+          JS -- "HTTP POST /api/v1/scan-zone" --> API
+          JS -- "HTTP POST /api/v1/chat (SSE Stream)" --> API
+          
+          API -- "Resolves static links" --> Static
+          API -- "Orchestrates session state" --> Session
+          API -- "Invokes runner" --> ADKRunner
+          
+          Agent -- "Registers" --> ScanTool
+          Agent -- "Registers" --> SendTool
+          Agent -- "Registers" --> SearchTool
+          
+          ScanTool -- "1. Try API Auth" --> GEE
+          ScanTool -- "2. Fallback Generation" --> Pillow
+          Pillow -- "Saves mock PNGs" --> Static
+          
+          SendTool -- "Writes Alert Record" --> DB
+          SearchTool -- "Queries Alerts" --> DB
+          
+          ADKRunner -. "Traces Execution" .-> Tel
+      </div>
+    </div>
+
+    <div class="sidebar">
+      <div class="sidebar-header">
+        <h2>Component Guide</h2>
+      </div>
+      <div class="sidebar-content">
+        <div class="legend-item">
+          <div class="legend-color color-client"></div>
+          <div class="legend-details">
+            <h3>Client Dashboard</h3>
+            <p>Serves as the interactive dashboard UI to display monitoring feeds, trigger mock/GEE scans, and initiate chat streams.</p>
+          </div>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color color-api"></div>
+          <div class="legend-details">
+            <h3>FastAPI Service</h3>
+            <p>Backend routing engine running REST endpoints and generating Server-Sent Events (SSE) chat streams for real-time agent output.</p>
+          </div>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color color-agent"></div>
+          <div class="legend-details">
+            <h3>AI Agent & Tools</h3>
+            <p>Powered by Gemini 1.5/3 Flash via Google ADK. Invokes custom tools for GEE image scanning and alert logging.</p>
+          </div>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color color-data"></div>
+          <div class="legend-details">
+            <h3>Storage & Fallback</h3>
+            <p>Persistent storage via MongoDB Atlas, defaulting gracefully to local storage and Pillow image synthesis if keys are missing.</p>
+          </div>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color color-telemetry"></div>
+          <div class="legend-details">
+            <h3>Observability</h3>
+            <p>Tracks agent execution logic and tool responses via OpenTelemetry and Arize Phoenix.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Initialize Mermaid
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'dark',
+      securityLevel: 'loose',
+      flowchart: {
+        useMaxWidth: false,
+        htmlLabels: true
+      }
+    });
+
+    // Zoom & Pan functionality
+    let zoomLevel = 1.0;
+    const diagramEl = document.getElementById('diagram');
+    const canvasEl = document.getElementById('canvas');
+
+    function zoomIn() {
+      zoomLevel += 0.1;
+      applyZoom();
+    }
+
+    function zoomOut() {
+      if (zoomLevel > 0.3) {
+        zoomLevel -= 0.1;
+        applyZoom();
+      }
+    }
+
+    function resetZoom() {
+      zoomLevel = 1.0;
+      applyZoom();
+      canvasEl.scrollLeft = (canvasEl.scrollWidth - canvasEl.clientWidth) / 2;
+      canvasEl.scrollTop = (canvasEl.scrollHeight - canvasEl.clientHeight) / 2;
+    }
+
+    function applyZoom() {
+      diagramEl.style.transform = `scale(${zoomLevel})`;
+    }
+
+    // Scroll to center of canvas on load
+    window.addEventListener('load', () => {
+      setTimeout(resetZoom, 500);
+    });
+
+    // Simple Drag to Pan
+    let isDown = false;
+    let startX;
+    let startY;
+    let scrollLeft;
+    let scrollTop;
+
+    canvasEl.addEventListener('mousedown', (e) => {
+      if (e.target.closest('.controls')) return;
+      isDown = true;
+      startX = e.pageX - canvasEl.offsetLeft;
+      startY = e.pageY - canvasEl.offsetTop;
+      scrollLeft = canvasEl.scrollLeft;
+      scrollTop = canvasEl.scrollTop;
+    });
+
+    canvasEl.addEventListener('mouseleave', () => {
+      isDown = false;
+    });
+
+    canvasEl.addEventListener('mouseup', () => {
+      isDown = false;
+    });
+
+    canvasEl.addEventListener('mousemove', (e) => {
+      if(!isDown) return;
+      e.preventDefault();
+      const x = e.pageX - canvasEl.offsetLeft;
+      const y = e.pageY - canvasEl.offsetTop;
+      const walkX = (x - startX) * 1.5;
+      const walkY = (y - startY) * 1.5;
+      canvasEl.scrollLeft = scrollLeft - walkX;
+      canvasEl.scrollTop = scrollTop - walkY;
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,137 @@
+import os
+import logging
+from pydantic import BaseModel
+from typing import Optional
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import StreamingResponse
+import json
+
+# Import ADK primitives
+from google.adk.runners import Runner
+from google.adk.sessions import InMemorySessionService
+from google.genai import types
+
+# Import our agent, tools and database functions
+from app.agent import root_agent, app as adk_app
+from app.tools import scan_zone_tool, STATIC_DIR
+from app.database import get_alerts
+from app.app_utils.telemetry import setup_telemetry
+
+# Initialize Telemetry (Arize Phoenix & GCP Agent Engine)
+setup_telemetry()
+
+# FastAPI Setup
+app = FastAPI(
+    title="Sentinel Flood-Watch API",
+    description="Agentic monitoring and alert API for Accra flood zones.",
+    version="1.0.0"
+)
+
+# CORS Setup for local dashboard communication
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Session Service
+session_service = InMemorySessionService()
+
+# Mount Static Files (serves PIL-generated mock images and evidence links)
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+
+# Request Models
+class ScanRequest(BaseModel):
+    latitude: float
+    longitude: float
+    site_name: str
+
+class ChatRequest(BaseModel):
+    message: str
+    session_id: Optional[str] = "default_session"
+    user_id: Optional[str] = "default_user"
+
+# Endpoints
+@app.get("/api/v1/alerts")
+async def fetch_alerts(query: Optional[str] = None):
+    """Retrieves logged alerts from the database."""
+    try:
+        alerts = await get_alerts(query)
+        return {"status": "success", "count": len(alerts), "alerts": alerts}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/v1/scan-zone")
+async def scan_zone(request: ScanRequest):
+    """Directly triggers satellite scan for given coordinates."""
+    try:
+        result = await scan_zone_tool(
+            latitude=request.latitude,
+            longitude=request.longitude,
+            site_name=request.site_name
+        )
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/v1/chat")
+async def chat_stream(request: ChatRequest):
+    """Streams the ADK AI Agent's reasoning, tool executions, and final replies using SSE."""
+    session_id = request.session_id or "default_session"
+    user_id = request.user_id or "default_user"
+
+    # Ensure session exists in the service
+    try:
+        await session_service.get_session(app_name="sentinel", user_id=user_id, session_id=session_id)
+    except Exception:
+        await session_service.create_session(app_name="sentinel", user_id=user_id, session_id=session_id)
+
+    async def event_generator():
+        try:
+            runner = Runner(agent=root_agent, app_name="sentinel", session_service=session_service)
+            new_msg = types.Content(role="user", parts=[types.Part.from_text(text=request.message)])
+            
+            async for event in runner.run_async(user_id=user_id, session_id=session_id, new_message=new_msg):
+                author = event.author
+                text = ""
+                if event.content and event.content.parts:
+                    text = "".join([p.text for p in event.content.parts if p.text])
+                
+                # Check for tool/function calls
+                func_calls = []
+                for fc in event.get_function_calls():
+                    func_calls.append({"name": fc.name, "args": dict(fc.args) if fc.args else {}})
+                
+                # Check for tool/function responses
+                func_responses = []
+                for fr in event.get_function_responses():
+                    func_responses.append({"name": fr.name, "response": fr.response})
+                
+                chunk = {
+                    "id": event.id,
+                    "author": author,
+                    "text": text,
+                    "function_calls": func_calls,
+                    "function_responses": func_responses,
+                    "is_final": event.is_final_response()
+                }
+                
+                yield f"data: {json.dumps(chunk)}\n\n"
+        except Exception as e:
+            err_chunk = {"id": "error", "author": "system", "text": f"Error running agent: {str(e)}", "is_final": True}
+            yield f"data: {json.dumps(err_chunk)}\n\n"
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+# Root Endpoint
+@app.get("/")
+async def root():
+    return {
+        "app": "Sentinel Flood-Watch",
+        "description": "Accra urban flooding satellite monitoring AI Agent API.",
+        "status": "online"
+    }

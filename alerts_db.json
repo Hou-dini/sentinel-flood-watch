@@ -1,0 +1,28 @@
+[
+  {
+    "_id": "alert-101",
+    "site_name": "Korle Lagoon",
+    "coordinates": {
+      "latitude": 5.5344,
+      "longitude": -0.2197
+    },
+    "timestamp": "2026-05-23T10:03:17.698319",
+    "agent_summary": "Detected 35% reduction in shoreline vegetation and new concrete structural foundations within 30 meters of the lagoon channel.",
+    "severity": "High",
+    "status": "Active",
+    "evidence_link": "/static/mock_korle_lagoon_current_rgb.png"
+  },
+  {
+    "_id": "alert-102",
+    "site_name": "Sakumo Ramsar Site",
+    "coordinates": {
+      "latitude": 5.6294,
+      "longitude": -0.0431
+    },
+    "timestamp": "2026-05-23T06:03:17.698319",
+    "agent_summary": "Slight vegetation degradation (NDVI decrease of 12%) and illegal dumping of sandy loam in the wetland buffer zone.",
+    "severity": "Medium",
+    "status": "Active",
+    "evidence_link": "/static/mock_sakumo_ramsar_site_current_rgb.png"
+  }
+]
