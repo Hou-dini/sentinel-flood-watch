@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,15 +8,20 @@
     <!-- Google Fonts: Outfit for headers, Inter for body -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Outfit:wght@400;600;700;800&display=swap"
+        rel="stylesheet">
     <!-- FontAwesome Icons -->
     <script src="https://kit.fontawesome.com/0c13a9f144.js" crossorigin="anonymous"></script>
     <!-- Leaflet CSS for Map -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
     <!-- Leaflet JS -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <link rel="stylesheet" href="index.css">
 </head>
+
 <body class="dark-mode">
     <header class="main-header">
         <div class="logo-container">
@@ -36,6 +42,21 @@
                 <i class="fa-solid fa-triangle-exclamation text-alert"></i>
                 <h2>Active Alerts</h2>
             </div>
+            <!-- Live Analytics Dashboard Cards -->
+            <div class="analytics-container">
+                <div class="stat-card">
+                    <span class="stat-num" id="stat-alerts">0</span>
+                    <span class="stat-lbl">Alerts</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-num" id="stat-scans">0</span>
+                    <span class="stat-lbl">Scans</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-num" id="stat-success">100%</span>
+                    <span class="stat-lbl">Success</span>
+                </div>
+            </div>
             <div class="alert-list-container">
                 <div class="alert-list" id="alert-list">
                     <!-- Dynamic Alert Cards go here -->
@@ -49,7 +70,7 @@
                 <div class="zone-buttons">
                     <button class="zone-btn" onclick="focusZone('korle lagoon')">Korle Lagoon</button>
                     <button class="zone-btn" onclick="focusZone('odaw river')">Odaw River</button>
-                    <button class="zone-btn" onclick="focusZone('sakumo ramsar site')">Sakumo Ramsar</button>
+                    <button class="zone-btn" onclick="focusZone('sakumono ramsar site')">Sakumono Ramsar</button>
                     <button class="zone-btn" onclick="focusZone('densu delta ramsar site')">Densu Delta</button>
                 </div>
             </div>
@@ -76,7 +97,7 @@
                         <button class="tab-btn" data-view="mndwi">MNDWI (Water Channel)</button>
                     </div>
                 </div>
-                
+
                 <div class="comparison-slider-container">
                     <div class="comparison-slider" id="comparison-slider">
                         <!-- Before Image -->
@@ -106,11 +127,12 @@
                 <i class="fa-solid fa-brain-circuit text-brain"></i>
                 <h2>Sentinel Flood-Watch Agent</h2>
             </div>
-            
+
             <div class="agent-trace-container" id="agent-trace-container">
                 <div class="trace-header">
                     <span><i class="fa-solid fa-terminal"></i> Agent Execution Trace</span>
-                    <button class="toggle-trace-btn" id="toggle-trace-btn"><i class="fa-solid fa-chevron-down"></i></button>
+                    <button class="toggle-trace-btn" id="toggle-trace-btn"><i
+                            class="fa-solid fa-chevron-down"></i></button>
                 </div>
                 <div class="trace-log" id="trace-log">
                     <div class="trace-entry system">Tracer initialized. Waiting for prompt...</div>
@@ -120,11 +142,13 @@
             <div class="chat-messages" id="chat-messages">
                 <div class="chat-bubble agent">
                     <div class="bubble-content">
-                        Hello! I am the **Sentinel Flood-Watch AI Agent**. I proactively monitor Accra's waterways and Ramsar sites for unauthorized building structures and illegal waste dumping using Sentinel-2 satellite data.
+                        Hello! I am the **Sentinel Flood-Watch AI Agent**. I proactively monitor Accra's waterways and
+                        Ramsar sites for unauthorized building structures and illegal waste dumping using Sentinel-2
+                        satellite data.
                         <br><br>
                         Ask me to:
                         <ul>
-                            <li>*"Scan the Sakumo Ramsar Site for illegal buildings"*</li>
+                            <li>*"Scan the Sakumono Ramsar Site for illegal buildings"*</li>
                             <li>*"Check Korle Lagoon for waterways blockage"*</li>
                             <li>*"Search for active alerts in Densu Delta"*</li>
                         </ul>
@@ -135,11 +159,13 @@
 
             <div class="chat-input-area">
                 <div class="input-glow"></div>
-                <textarea id="chat-input" placeholder="Type instructions for the monitoring agent..." rows="1"></textarea>
+                <textarea id="chat-input" placeholder="Type instructions for the monitoring agent..."
+                    rows="1"></textarea>
                 <button id="chat-send-btn" class="send-btn"><i class="fa-solid fa-paper-plane"></i></button>
             </div>
         </section>
     </main>
     <script src="index.js"></script>
 </body>
+
 </html>

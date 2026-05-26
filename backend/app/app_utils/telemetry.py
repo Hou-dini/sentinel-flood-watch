@@ -58,6 +58,12 @@ def setup_telemetry() -> str | None:
         # Phoenix project configuration
         project = os.environ.get("PHOENIX_PROJECT_NAME", "sentinel-flood-watch")
         
+        # Avoid OTLP 401 Unauthorized errors by disabling cloud collector endpoint when API key is missing
+        if not os.environ.get("PHOENIX_API_KEY"):
+            if os.environ.get("PHOENIX_COLLECTOR_ENDPOINT") == "https://app.phoenix.arize.com":
+                logging.info("Arize Phoenix API key is missing. Falling back to local collector to avoid 401 unauthorized errors.")
+                os.environ.pop("PHOENIX_COLLECTOR_ENDPOINT", None)
+        
         # Initialize tracer provider
         tracer_provider = register(
             project_name=project,

@@ -12,6 +12,7 @@ A **Vanilla HTML/CSS/JS web dashboard** provides:
 - Side-by-side split screen comparisons of baseline (historical) and current imagery.
 - Visual heatmaps showing Normalized Difference Vegetation Index (NDVI) and Modified Normalized Difference Water Index (MNDWI) to highlight encroachment.
 - AI Chatbot for querying and commanding the monitoring agent.
+- **Live Analytics Bar:** Tracks and displays live statistics including the total number of active alerts, successful scans executed, and system processing success rate.
 
 ```
 +------------------------------------------+
@@ -43,7 +44,7 @@ A **Vanilla HTML/CSS/JS web dashboard** provides:
 - **AI Agent Framework:** Google ADK (Agent Development Kit)
 - **AI Model:** Gemini 3 Flash (`gemini-3-flash-preview`)
 - **Backend Server:** FastAPI / Uvicorn (Python 3.11)
-- **Data Source:** Google Earth Engine (Sentinel-2 Surface Reflectance)
+- **Data Source:** Google Earth Engine (Sentinel-2 Harmonized Surface Reflectance: `COPERNICUS/S2_SR_HARMONIZED`)
 - **Database:** MongoDB Atlas (fallback to local `alerts_db.json`)
 - **Observability:** Arize Phoenix / OpenInference OTel Tracing
 - **Frontend:** HTML5, CSS3 (Vanilla Dark Glassmorphism), JavaScript, Leaflet.js
@@ -57,6 +58,8 @@ A **Vanilla HTML/CSS/JS web dashboard** provides:
 - **Visual Evidence Slider:** Compare NDVI/MNDWI indices dynamically.
 - **Stateful Agent Chat:** Streaming agent thoughts and actions.
 - **Accra Buffers:** Specific boundaries set for Odaw River, Korle Lagoon, Sakumonor, and Densu Delta.
+- **Live Analytics Widgets:** Real-time database metrics displaying scans processed, alerts sent, and execution success rates.
+- **Grounded Geocoding Search:** Real-time coordinate lookup for arbitrary Accra landmarks (such as Weija Dam) via OpenStreetMap Nominatim and DuckDuckGo API integration to prevent coordinate hallucinations.
 
 ## 5. Future Roadmap
 - **Real-Time SMS Alerts:** Integration with Twilio to SMS NADMO coordinators.

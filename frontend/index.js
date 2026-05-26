@@ -20,6 +20,7 @@ document.addEventListener("DOMContentLoaded", () => {
     initMap();
     initComparisonSlider();
     fetchAlerts();
+    updateLiveAnalytics();
     setupChat();
     setupTabs();
 });
@@ -125,8 +126,19 @@ function updateComparisonImages() {
     const currKey = `current_${currentActiveView}`;
     
     if (lastScanResult[baseKey] && lastScanResult[currKey]) {
-        baselineImg.src = API_BASE_URL + lastScanResult[baseKey];
-        currentImg.src = API_BASE_URL + lastScanResult[currKey];
+        let baseSrc = lastScanResult[baseKey];
+        let currSrc = lastScanResult[currKey];
+        
+        // Only prepend base URL if it's a relative static path
+        if (!baseSrc.startsWith("http://") && !baseSrc.startsWith("https://")) {
+            baseSrc = API_BASE_URL + baseSrc;
+        }
+        if (!currSrc.startsWith("http://") && !currSrc.startsWith("https://")) {
+            currSrc = API_BASE_URL + currSrc;
+        }
+        
+        baselineImg.src = baseSrc;
+        currentImg.src = currSrc;
     }
 }
 
@@ -173,6 +185,7 @@ async function fetchAlerts() {
     } catch (e) {
         listContainer.innerHTML = `<div class="loading-spinner" style="color: var(--alert-red);"><i class="fa-solid fa-circle-xmark"></i> Connection Error.</div>`;
     }
+    updateLiveAnalytics();
 }
 
 // Select alert card
@@ -367,9 +380,21 @@ async function executeAgentChat(messageText) {
                         dataJson.function_responses.forEach(fr => {
                             appendTraceLog("tool-response", `<i class="fa-solid fa-check"></i> <strong>${fr.name}</strong> returned: ${JSON.stringify(fr.response).substring(0, 100)}...`);
                             
-                            // Reload alerts feed if we sent a new alert
-                            if (fr.name === "send_alert_tool") {
+                            // If scan completes, load real GEE results dynamically into the slider
+                            if (fr.name === "scan_zone_tool") {
+                                const scanData = fr.response;
+                                if (scanData && scanData.status === "success") {
+                                    loadScanResults(scanData);
+                                    // Pan map to scanned coordinates dynamically
+                                    if (scanData.latitude && scanData.longitude) {
+                                        map.setView([scanData.latitude, scanData.longitude], 14);
+                                    }
+                                }
                                 fetchAlerts();
+                                updateLiveAnalytics();
+                            } else if (fr.name === "send_alert_tool") {
+                                fetchAlerts();
+                                updateLiveAnalytics();
                             }
                         });
                     }
@@ -415,5 +440,19 @@ async function executeAgentChat(messageText) {
         const existingIndicator = document.querySelector(".typing-indicator");
         if (existingIndicator) existingIndicator.remove();
         appendMessage("agent", "I'm sorry, I encountered an error connecting to my backend agent runner. Please ensure the FastAPI server is running on port 8000.");
+    }
+}
+
+// 8. Update Live Analytics Statistics
+async function updateLiveAnalytics() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/v1/analytics`);
+        const data = await response.json();
+        
+        document.getElementById("stat-alerts").innerText = data.total_alerts;
+        document.getElementById("stat-scans").innerText = data.total_scans;
+        document.getElementById("stat-success").innerText = data.success_rate;
+    } catch (e) {
+        console.error("Error updating live analytics:", e);
     }
 }

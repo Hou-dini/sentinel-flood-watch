@@ -1,5 +1,7 @@
 import os
 import logging
+from dotenv import load_dotenv
+load_dotenv()
 from pydantic import BaseModel
 from typing import Optional
 from fastapi import FastAPI, HTTPException
@@ -16,7 +18,7 @@ from google.genai import types
 # Import our agent, tools and database functions
 from app.agent import root_agent, app as adk_app
 from app.tools import scan_zone_tool, STATIC_DIR
-from app.database import get_alerts
+from app.database import get_alerts, get_analytics_summary
 from app.app_utils.telemetry import setup_telemetry
 
 # Initialize Telemetry (Arize Phoenix & GCP Agent Engine)
@@ -44,6 +46,11 @@ session_service = InMemorySessionService()
 # Mount Static Files (serves PIL-generated mock images and evidence links)
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
+# Mount Frontend Dashboard
+FRONTEND_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "frontend")
+if os.path.exists(FRONTEND_DIR):
+    app.mount("/dashboard", StaticFiles(directory=FRONTEND_DIR, html=True), name="dashboard")
+
 # Request Models
 class ScanRequest(BaseModel):
     latitude: float
@@ -62,6 +69,15 @@ async def fetch_alerts(query: Optional[str] = None):
     try:
         alerts = await get_alerts(query)
         return {"status": "success", "count": len(alerts), "alerts": alerts}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/v1/analytics")
+async def fetch_analytics():
+    """Retrieves live analytics (total alerts, scans processed, success rate)."""
+    try:
+        summary = await get_analytics_summary()
+        return summary
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -85,9 +101,8 @@ async def chat_stream(request: ChatRequest):
     user_id = request.user_id or "default_user"
 
     # Ensure session exists in the service
-    try:
-        await session_service.get_session(app_name="sentinel", user_id=user_id, session_id=session_id)
-    except Exception:
+    session = await session_service.get_session(app_name="sentinel", user_id=user_id, session_id=session_id)
+    if session is None:
         await session_service.create_session(app_name="sentinel", user_id=user_id, session_id=session_id)
 
     async def event_generator():

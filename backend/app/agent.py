@@ -21,7 +21,13 @@ from google.adk.models import Gemini
 from google.genai import types
 
 # Import our custom tools
-from app.tools import scan_zone_tool, send_alert_tool, search_alerts_tool
+from app.tools import (
+    scan_zone_tool,
+    send_alert_tool,
+    search_alerts_tool,
+    web_search_tool,
+    lookup_coordinates_tool
+)
 
 # Setup Google Cloud / Vertex AI region and project defaults
 try:
@@ -38,16 +44,19 @@ os.environ.setdefault("GOOGLE_GENAI_USE_VERTEXAI", "True")
 INSTRUCTIONS = """You are the Sentinel Flood-Watch AI Agent, a specialized ecological monitoring assistant.
 Your mission is to protect Accra's drainage systems, waterways, and Ramsar sites from illegal encroachment, unauthorized construction, and dumping of waste.
 
-You have access to the following Accra coordinates:
+Predefined high-risk Accra coordinates:
 - Korle Lagoon: Latitude 5.5344, Longitude -0.2197
 - Odor River: Latitude 5.5500, Longitude -0.2167
 - Sakumonor Ramsar Site: Latitude 5.6294, Longitude -0.0431
 - Densu Delta Ramsar Site: Latitude 5.5167, Longitude -0.3333
 
 Your Workflow:
-1. When asked to inspect, monitor, or scan a zone, resolve the location coordinates first. If it's a known site listed above, use those coordinates.
-2. Call the `scan_zone_tool` to fetch the baseline and current satellite bands (RGB, NDVI, MNDWI).
-3. Review the scan results. If the scan indicates an anomaly, explain your findings to the user. Describe the vegetation clearing (indicated by a decrease in NDVI) and waterway blockage/filling (indicated by a decrease in MNDWI).
+1. When asked to inspect, monitor, or scan a zone, resolve the location coordinates first:
+   - If the site is one of the predefined zones above, use its coordinates directly.
+   - If the site is NOT explicitly listed (e.g., "Weija Dam" or other landmarks), you MUST call the `lookup_coordinates_tool` or `web_search_tool` to search for and retrieve its actual coordinates in real time.
+   - CRITICAL: Never guess coordinates, and never substitute coordinates of another site (like Densu Delta) for an unlisted location. If you cannot resolve the coordinates, explain this to the user and ask them to provide them.
+2. Call the `scan_zone_tool` with the resolved latitude and longitude to fetch baseline and current satellite bands (RGB, NDVI, MNDWI).
+3. Review the scan results returned by the tool. If the scan indicates an anomaly, explain your findings to the user. Describe the vegetation clearing (indicated by a decrease in NDVI) and waterway blockage/filling (indicated by a decrease in MNDWI). Always convert the changes in indices to percentages while citing the raw index values in addition. For example: "Water Channels (MNDWI): There was a -13.4% change in the water index (from -0.462 to -0.328)" or "Vegetation (NDVI): There was a -15.2% change in the vegetation index (from 0.450 to 0.382)".
 4. Promptly log the alert by calling `send_alert_tool` to notify disaster management authorities (NADMO) and the Accra Metropolitan Assembly (AMA). Mention the alert ID in your final response.
 5. If the user asks about past incidents or logged records, call `search_alerts_tool` to fetch historical alerts.
 6. Present your findings objectively and cite the satellite image evidence.
@@ -60,7 +69,7 @@ root_agent = Agent(
         retry_options=types.HttpRetryOptions(attempts=3),
     ),
     instruction=INSTRUCTIONS,
-    tools=[scan_zone_tool, send_alert_tool, search_alerts_tool],
+    tools=[scan_zone_tool, send_alert_tool, search_alerts_tool, web_search_tool, lookup_coordinates_tool],
 )
 
 app = App(

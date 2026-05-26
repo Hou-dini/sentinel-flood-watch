@@ -195,6 +195,9 @@ tests/load_test/.results/*.csv
 .locust_env
 my_env.tfvars
 .saved_chats
+# Credentials & Local Keys
+*key.json
+credentials/
 .env
 .requirements.txt
 

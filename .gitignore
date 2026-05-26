@@ -1,0 +1,16 @@
+# Environments
+.env
+.venv/
+venv/
+
+# Database / Local Storage
+alerts_db.json
+scans_db.json
+
+# Credentials / Keys
+*key.json
+credentials/
+
+# System / OS
+.DS_Store
+Thumbs.db
