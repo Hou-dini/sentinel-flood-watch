@@ -5,7 +5,7 @@ const API_BASE_URL = "http://localhost:8000";
 const RISK_ZONES = {
     "korle lagoon": { lat: 5.5344, lon: -0.2197, name: "Korle Lagoon / Odaw Mouth", color: "#ff4b5c", zoom: 14 },
     "odaw river": { lat: 5.5500, lon: -0.2167, name: "Odaw River Basin", color: "#ff8e53", zoom: 14 },
-    "sakumo ramsar site": { lat: 5.6294, lon: -0.0431, name: "Sakumo Ramsar Site", color: "#9a4eff", zoom: 13 },
+    "sakumono ramsar site": { lat: 5.6294, lon: -0.0431, name: "Sakumono Ramsar Site", color: "#9a4eff", zoom: 13 },
     "densu delta ramsar site": { lat: 5.5167, lon: -0.3333, name: "Densu Delta Ramsar Site", color: "#00f2fe", zoom: 13 }
 };
 

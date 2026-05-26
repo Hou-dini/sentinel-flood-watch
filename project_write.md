@@ -57,7 +57,7 @@ A **Vanilla HTML/CSS/JS web dashboard** provides:
 ## 4. Key Features
 - **Visual Evidence Slider:** Compare NDVI/MNDWI indices dynamically.
 - **Stateful Agent Chat:** Streaming agent thoughts and actions.
-- **Accra Buffers:** Specific boundaries set for Odaw River, Korle Lagoon, Sakumonor, and Densu Delta.
+- **Accra Buffers:** Specific boundaries set for Odaw River, Korle Lagoon, Sakumono, and Densu Delta.
 - **Live Analytics Widgets:** Real-time database metrics displaying scans processed, alerts sent, and execution success rates.
 - **Grounded Geocoding Search:** Real-time coordinate lookup for arbitrary Accra landmarks (such as Weija Dam) via OpenStreetMap Nominatim and DuckDuckGo API integration to prevent coordinate hallucinations.
 

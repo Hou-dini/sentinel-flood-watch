@@ -117,7 +117,7 @@ A fast, asynchronous HTTP server built with FastAPI that exposes REST and stream
 
 ### C. AI Agent Layer (Google ADK & Gemini)
 The agentic intelligence layer orchestrating tools to monitor Accra's waterways:
-* **`Agent`**: The `sentinel_flood_watch_agent` configured with detailed system instructions. It defines coordinates for sites of interest (Korle Lagoon, Odor River, Sakumono Ramsar, Densu Delta) and runs a multi-step diagnostic workflow when prompted.
+* **`Agent`**: The `sentinel_flood_watch_agent` configured with detailed system instructions. It defines coordinates for sites of interest (Korle Lagoon, Odaw River, Sakumono Ramsar, Densu Delta) and runs a multi-step diagnostic workflow when prompted.
 * **`Model`**: Leverages `Gemini (gemini-3-flash-preview)` as the reasoning engine.
 * **`App`**: Wraps the agent to expose operations and orchestrate configurations.
 * **`Runner`**: Executes agent sessions using `InMemorySessionService` to manage and store conversation history.

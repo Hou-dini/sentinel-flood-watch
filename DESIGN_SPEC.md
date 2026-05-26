@@ -1,14 +1,14 @@
 # DESIGN_SPEC.md — Sentinel Flood-Watch
 
 ## Overview
-Sentinel Flood-Watch is an intelligent, agentic monitoring system designed to proactively detect and report human encroachment, unauthorized construction, and waste dumping within Accra's critical ecological and flood-prone zones (specifically Odor River/Korle Lagoon, Sakumonor Ramsar Site, and Densu Delta Ramsar Site).
+Sentinel Flood-Watch is an intelligent, agentic monitoring system designed to proactively detect and report human encroachment, unauthorized construction, and waste dumping within Accra's critical ecological and flood-prone zones (specifically Odaw River/Korle Lagoon, Sakumono Ramsar Site, and Densu Delta Ramsar Site).
 
 The system integrates Google Earth Engine (Sentinel-2 imagery), Google ADK (for agent execution & tool calling), and the Gemini API (for advanced vision reasoning). When an anomaly (e.g., land clearing or new structures) is identified, the agent creates a persistent record in MongoDB and triggers notifications for environmental and disaster management authorities (NADMO, AMA). A responsive, glassmorphic web dashboard visualizes the alerts on an interactive map, shows before/after satellite bands (RGB, NDVI, MNDWI), and hosts a chat interface to interact with the agent.
 
 ## Example Use Cases
 
 ### 1. Automated Monitoring Cycle
-* **Input:** Scheduled trigger for Sakumo Ramsar Site coordinates.
+* **Input:** Scheduled trigger for Sakumono Ramsar Site coordinates.
 * **Agent Logic:** Calls Earth Engine to retrieve a cloud-free baseline image from 6 months ago and the most recent cloud-free image. Calculates NDVI and MNDWI. Compares the two images.
 * **Expected Output:** JSON result indicating `anomaly_detected: true`, and `summary: "Detected a 15% decrease in vegetation index (NDVI) and 4 new reflective structures within 30 meters of the lagoon buffer."` Saves alert to MongoDB.
 

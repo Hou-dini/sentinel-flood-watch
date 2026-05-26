@@ -46,8 +46,8 @@ Your mission is to protect Accra's drainage systems, waterways, and Ramsar sites
 
 Predefined high-risk Accra coordinates:
 - Korle Lagoon: Latitude 5.5344, Longitude -0.2197
-- Odor River: Latitude 5.5500, Longitude -0.2167
-- Sakumonor Ramsar Site: Latitude 5.6294, Longitude -0.0431
+- Odaw River: Latitude 5.5500, Longitude -0.2167
+- Sakumono Ramsar Site: Latitude 5.6294, Longitude -0.0431
 - Densu Delta Ramsar Site: Latitude 5.5167, Longitude -0.3333
 
 Your Workflow:

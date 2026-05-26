@@ -13,8 +13,8 @@ os.makedirs(STATIC_DIR, exist_ok=True)
 # Mock coordinates dictionary for Accra locations
 ACCRA_SITES = {
     "korle lagoon": {"lat": 5.5344, "lon": -0.2197},
-    "odor river": {"lat": 5.5500, "lon": -0.2167},
-    "sakumonor ramsar site": {"lat": 5.6294, "lon": -0.0431},
+    "odaw river": {"lat": 5.5500, "lon": -0.2167},
+    "sakumono ramsar site": {"lat": 5.6294, "lon": -0.0431},
     "densu delta ramsar site": {"lat": 5.5167, "lon": -0.3333}
 }
 
@@ -79,7 +79,7 @@ def generate_mock_satellite_images(site_name: str, has_encroachment: bool = True
     # Winding river
     river_points = [(50, 0), (80, 80), (160, 160), (140, 240), (220, 320), (200, 400)]
     draw_base.line(river_points, fill=(30, 144, 255), width=24, joint="curve") # Dodger blue river
-    # Lagoon body if Sakumo or Korle
+    # Lagoon body if Sakumono or Korle
     if "lagoon" in site_name.lower() or "ramsar" in site_name.lower():
         draw_base.ellipse([80, 100, 280, 300], fill=(30, 144, 255))
     img_base_rgb.save(os.path.join(STATIC_DIR, filenames["baseline_rgb"]))
@@ -158,7 +158,7 @@ async def scan_zone_tool(latitude: float, longitude: float, site_name: str, tool
     Args:
         latitude: Latitude coordinate of the monitoring target.
         longitude: Longitude coordinate of the monitoring target.
-        site_name: Name of the ecological site (e.g. "Sakumonor Ramsar Site").
+        site_name: Name of the ecological site (e.g. "Sakumono Ramsar Site").
         
     Returns:
         A dictionary with image URLs (RGB, NDVI, MNDWI) and an anomaly evaluation.
