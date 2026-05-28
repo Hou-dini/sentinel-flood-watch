@@ -63,3 +63,20 @@
 - Implement a real/simulated Twilio SMS alert dispatcher.
 - Deploy the ADK agent engine to Google Cloud Vertex AI.
 
+---
+
+## Session Date: May 28, 2026
+
+### Activities Completed
+1. **Explain Remote Sensing Interpretations:**
+   - Documented index color mappings: explained how MNDWI maps low values to black (land/buildings) and high values to blue/cyan (water), and how NDVI maps low values to red (water/barren land) and higher values to yellow/green (vegetation).
+   - Clarified the threshold rationale of `0.02` for index difference comparison as a 2% average regional shift to filter seasonal, atmospheric, and calibration noise.
+2. **Dynamic Earth Engine Date Filtering:**
+   - Refactored [tools.py](file:///c:/Users/Elikplim/VS%20Code%20Projects/sentinel_flood_watch/backend/app/tools.py#L183-L208) to remove hardcoded dates for Earth Engine Sentinel-2 collection queries.
+   - Implemented a dynamic rolling 1.5-year (540 days) window ending on the current date for the current imagery.
+   - Implemented a dynamic historical baseline window of identical length (1.5 years) offset by exactly 5 years (to align seasonal patterns and prevent false positives from wet/dry season differences).
+
+### Next Steps
+- Implement a real/simulated Twilio SMS alert dispatcher.
+- Deploy the ADK agent engine to Google Cloud Vertex AI.
+

@@ -181,15 +181,25 @@ async def scan_zone_tool(latitude: float, longitude: float, site_name: str, tool
             
             s2 = ee.ImageCollection('COPERNICUS/S2_SR_HARMONIZED')
             
-            # Baseline: 2020
+            today = datetime.date.today()
+            
+            # Current: Dynamic rolling 1.5-year window ending today
+            current_end_str = today.isoformat()
+            current_start_str = (today - datetime.timedelta(days=540)).isoformat()
+            
+            # Baseline: Dynamic rolling 1.5-year window shifted 5 years in the past
+            # (Comparing same seasons/months to minimize seasonal false positives)
+            years_offset = 5
+            baseline_start_str = (today - datetime.timedelta(days=540 + years_offset * 365)).isoformat()
+            baseline_end_str = (today - datetime.timedelta(days=years_offset * 365)).isoformat()
+            
             baseline_col = s2.filterBounds(point) \
-                             .filterDate('2020-01-01', '2021-12-31') \
+                             .filterDate(baseline_start_str, baseline_end_str) \
                              .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', 20)) \
                              .sort('CLOUDY_PIXEL_PERCENTAGE')
             
-            # Current: 2025-2026
             current_col = s2.filterBounds(point) \
-                            .filterDate('2025-01-01', '2026-05-26') \
+                            .filterDate(current_start_str, current_end_str) \
                             .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', 20)) \
                             .sort('CLOUDY_PIXEL_PERCENTAGE')
             
