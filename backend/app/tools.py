@@ -402,8 +402,10 @@ async def lookup_coordinates_tool(location_name: str, tool_context: Optional[Too
     import json
     
     logging.info(f"Resolving coordinates for location: {location_name}...")
+    nominatim_email = os.environ.get("NOMINATIM_EMAIL")
+    user_agent = f"Sentinel-Flood-Watch/1.0 ({nominatim_email})" if nominatim_email else "Sentinel-Flood-Watch/1.0"
     headers = {
-        'User-Agent': 'Sentinel-Flood-Watch/1.0 (elikplim.kudowor@gmail.com)'
+        'User-Agent': user_agent
     }
     
     # Try searching with Accra, Ghana appended to ground it locally
