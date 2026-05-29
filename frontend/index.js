@@ -301,6 +301,22 @@ function setupChat() {
     });
 }
 
+// Render markdown to HTML safely using marked library
+if (typeof marked !== 'undefined' && marked.use) {
+    marked.use({ breaks: true });
+}
+
+function renderMarkdown(text) {
+    if (typeof marked !== 'undefined' && marked.parse) {
+        return marked.parse(text);
+    }
+    // Fallback if marked library fails to load
+    return text
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*(.*?)\*/g, '<em>$1</em>')
+        .replace(/\n/g, '<br>');
+}
+
 function appendMessage(role, text) {
     const container = document.getElementById("chat-messages");
     
@@ -311,11 +327,7 @@ function appendMessage(role, text) {
     const bubble = document.createElement("div");
     bubble.className = `chat-bubble ${role}`;
     
-    // Format simple markdown bolding
-    const formattedText = text
-        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-        .replace(/\*(.*?)\*/g, '<em>$1</em>')
-        .replace(/\n/g, '<br>');
+    const formattedText = renderMarkdown(text);
 
     bubble.innerHTML = `
         <div class="bubble-content">${formattedText}</div>
@@ -450,10 +462,7 @@ async function executeAgentChat(messageText) {
                             document.getElementById("chat-messages").appendChild(bubbleElement);
                         }
                         
-                        const formattedText = agentText
-                            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                            .replace(/\*(.*?)\*/g, '<em>$1</em>')
-                            .replace(/\n/g, '<br>');
+                        const formattedText = renderMarkdown(agentText);
                         
                         bubbleElement.innerHTML = `
                             <div class="bubble-content">${formattedText}</div>

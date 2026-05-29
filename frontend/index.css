@@ -309,8 +309,8 @@ body {
 }
 
 .map-panel {
-    flex: 1.2;
-    min-height: 250px;
+    flex: 0.9;
+    min-height: 200px;
 }
 
 #map {
@@ -331,8 +331,8 @@ body {
 
 /* Split Image Slider */
 .split-panel {
-    flex: 1;
-    min-height: 280px;
+    flex: 1.3;
+    min-height: 320px;
 }
 
 .panel-header-split {
@@ -706,14 +706,39 @@ body {
     align-self: flex-end;
 }
 
-/* Chat List items */
-.bubble-content ul {
+/* Chat List items & Markdown styling */
+.bubble-content p {
+    margin: 0 0 8px 0;
+}
+
+.bubble-content p:last-child {
+    margin-bottom: 0;
+}
+
+.bubble-content ul, .bubble-content ol {
     margin-left: 20px;
     margin-top: 6px;
+    margin-bottom: 8px;
 }
 
 .bubble-content li {
     margin-bottom: 4px;
+}
+
+.bubble-content code {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 2px 5px;
+    border-radius: 4px;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 12px;
+}
+
+.bubble-content strong {
+    color: var(--alert-green);
+}
+
+.chat-bubble.user .bubble-content strong {
+    color: inherit;
 }
 
 /* Input Area */
