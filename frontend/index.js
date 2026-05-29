@@ -23,6 +23,7 @@ document.addEventListener("DOMContentLoaded", () => {
     updateLiveAnalytics();
     setupChat();
     setupTabs();
+    updateLegendOverlay(); // Initialize legend overlay
 });
 
 // 1. Initialize Map
@@ -112,8 +113,44 @@ function setupTabs() {
             
             currentActiveView = tab.getAttribute("data-view");
             updateComparisonImages();
+            updateLegendOverlay();
         });
     });
+}
+
+// Update the legend overlay descriptions and visual guides dynamically
+function updateLegendOverlay() {
+    const title = document.getElementById("legend-view-title");
+    const desc = document.getElementById("legend-view-desc");
+    const container = document.getElementById("legend-scale-container");
+    
+    if (!title || !desc || !container) return;
+    
+    if (currentActiveView === "rgb") {
+        title.innerText = "True Color RGB";
+        desc.innerText = "Natural color view (Red, Green, Blue bands). Highlights visible developments, vegetation clearings, and surface structures.";
+        container.innerHTML = `
+            <div class="legend-scale-item"><span class="color-dot rgb-green"></span><span>Forest/Vegetation</span></div>
+            <div class="legend-scale-item"><span class="color-dot rgb-blue"></span><span>Water channels</span></div>
+            <div class="legend-scale-item"><span class="color-dot rgb-grey"></span><span>Concrete/Buildings</span></div>
+        `;
+    } else if (currentActiveView === "ndvi") {
+        title.innerText = "NDVI (Vegetation Index)";
+        desc.innerText = "Normalized Difference Vegetation Index isolates plant health and canopy density. Stressed or cleared areas show up in red/yellow.";
+        container.innerHTML = `
+            <div class="legend-scale-item"><span class="color-dot ndvi-high"></span><span>Healthy Forest (NDVI > 0.4)</span></div>
+            <div class="legend-scale-item"><span class="color-dot ndvi-med"></span><span>Cleared Land/Soil (NDVI 0.1 to 0.4)</span></div>
+            <div class="legend-scale-item"><span class="color-dot ndvi-low"></span><span>Buildings/Encroachment (NDVI < 0.1)</span></div>
+        `;
+    } else if (currentActiveView === "mndwi") {
+        title.innerText = "MNDWI (Water Index)";
+        desc.innerText = "Modified Normalized Difference Water Index isolates open surface water (bright cyan). Narrowing indicates water blockage or siltation.";
+        container.innerHTML = `
+            <div class="legend-scale-item"><span class="color-dot mndwi-water"></span><span>Open Surface Water (MNDWI > 0.2)</span></div>
+            <div class="legend-scale-item"><span class="color-dot mndwi-silt"></span><span>Wetlands/Siltation (MNDWI 0.0 to 0.2)</span></div>
+            <div class="legend-scale-item"><span class="color-dot mndwi-land"></span><span>Dry Land/Concrete (MNDWI < 0.0)</span></div>
+        `;
+    }
 }
 
 function updateComparisonImages() {

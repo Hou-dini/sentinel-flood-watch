@@ -30,7 +30,15 @@ This document captures engineering lessons, technical challenges, options consid
 * **Problem:** True Earth Engine thumbnail URLs generated via `.getThumbURL()` are absolute HTTP paths, while local mock images are relative paths (e.g. `/static/mock_...`). Prepending base URLs uniformly to all images broke absolute GEE images.
 * **Solution:** Enhance the Javascript source to perform string boundary checking: only prepend the backend server origin if the URL does not begin with `http://` or `https://`. In addition, capture the SSE stream tool-response events to update the slider dynamically upon GEE computation completion.
 
-## 7. Preventing Coordinate Hallucination with Nominatim Geocoding
-* **Problem:** When asked to inspect a site outside the pre-configured high-risk zones, the LLM tended to hallucinate coordinates or default to another site because it lacked geographical grounding.
-* **Solution:** Implement a keyless lookup tool utilizing the OpenStreetMap Nominatim geocoding API to resolve site coordinates in real time. Refine the system prompt to mandate geocoding lookup instead of guessing.
+## 8. Modular Refactoring of Monolithic Tools
+* **Problem:** Having all agent tools in a single large `tools.py` file made code reviews, unit testing, and maintenance difficult.
+* **Solution:** Refactored the file into a Python package `tools/` with single-responsibility modules: `scan_zone_tool.py`, `send_alert_tool.py`, `search_alerts_tool.py`, `lookup_coordinates_tool.py`, and `web_search_tool.py`. Clean public exports are managed in `__init__.py`.
+
+## 9. CI/CD Pipeline Mock Constraints
+* **Problem:** In a standard GitHub Actions runner, cloud credentials for GCP/GEE are not available, leading to failures if integration tests run during CI.
+* **Solution:** Structured tests to separate unit tests from integration tests. The CI workflow is configured to run only unit tests (`tests/unit/`) that mock live Earth Engine and GCP logging calls, keeping the build pipeline green and stable.
+
+## 10. Multi-stage Docker Builds with `uv`
+* **Problem:** Standard `pip install` in Docker builds is slow and produces bloated images containing compilers and build caches.
+* **Solution:** Implemented a multi-stage Dockerfile using `uv`. The builder stage syncs dependencies in a virtual environment (`.venv`), which is then copied to a slim final runtime stage. This results in fast, cached builds and a minimal container footprint.
 

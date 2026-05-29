@@ -45,14 +45,18 @@ A **Vanilla HTML/CSS/JS web dashboard** provides:
 - **AI Model:** Gemini 3 Flash (`gemini-3-flash-preview`)
 - **Backend Server:** FastAPI / Uvicorn (Python 3.11)
 - **Data Source:** Google Earth Engine (Sentinel-2 Harmonized Surface Reflectance: `COPERNICUS/S2_SR_HARMONIZED`)
-- **Database:** MongoDB Atlas (fallback to local `alerts_db.json`)
+- **Database:** MongoDB Atlas or local persistent `mongo:6.0` service (fallback to local `alerts_db.json`)
 - **Observability:** Arize Phoenix / OpenInference OTel Tracing
 - **Frontend:** HTML5, CSS3 (Vanilla Dark Glassmorphism), JavaScript, Leaflet.js
+- **Containerization:** Docker & Docker Compose
+- **CI/CD:** GitHub Actions (.github/workflows/ci.yml)
 
 ## 3. Engineering Decisions & Trade-Offs
 - **Mock Fallback Pipeline:** To ensure the system operates during evaluation without GEE credentials, the scanner falls back to Pillow-generated mock satellite bands.
 - **Async Database Connection:** We use `motor` (async MongoDB client) to keep FastAPI non-blocking, falling back to synchronous local JSON read/writes only when database connection strings are absent.
 - **Vanilla CSS over Tailwind:** Vanilla CSS provides maximum speed and visual customization, fitting the responsive glassmorphic aesthetic without introducing extra build pipelines.
+- **Modular Package Refactoring:** Refactored the monolithic `tools.py` into a modular `tools/` package structure to separate tool definitions (scanning, geocoding, searching, alerting) and improve maintainability.
+- **CI/CD Environment Controls:** Configured GitHub Actions to only run unit tests that mock external GCP/GEE APIs, preventing build failures due to missing credentials on public runners.
 
 ## 4. Key Features
 - **Visual Evidence Slider:** Compare NDVI/MNDWI indices dynamically.
@@ -60,6 +64,8 @@ A **Vanilla HTML/CSS/JS web dashboard** provides:
 - **Accra Buffers:** Specific boundaries set for Odaw River, Korle Lagoon, Sakumono, and Densu Delta.
 - **Live Analytics Widgets:** Real-time database metrics displaying scans processed, alerts sent, and execution success rates.
 - **Grounded Geocoding Search:** Real-time coordinate lookup for arbitrary Accra landmarks (such as Weija Dam) via OpenStreetMap Nominatim and DuckDuckGo API integration to prevent coordinate hallucinations.
+- **Interactive Legend Overlay:** Floating glassmorphic legend next to the satellite image slider to explain NDVI, MNDWI, and RGB band outputs in non-technical terms with live updates.
+- **Production Containerization:** Easy one-command local deploy utilizing Docker Compose linking FastAPI and MongoDB with volume mapping for persistence and GCP service account keys.
 
 ## 5. Future Roadmap
 - **Real-Time SMS Alerts:** Integration with Twilio to SMS NADMO coordinators.

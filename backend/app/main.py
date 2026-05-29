@@ -1,25 +1,26 @@
 import os
-import logging
+
 from dotenv import load_dotenv
+
 load_dotenv()
-from pydantic import BaseModel
-from typing import Optional
+import json
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 from fastapi.responses import StreamingResponse
-import json
+from fastapi.staticfiles import StaticFiles
 
 # Import ADK primitives
 from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
 from google.genai import types
+from pydantic import BaseModel
 
 # Import our agent, tools and database functions
-from app.agent import root_agent, app as adk_app
-from app.tools import scan_zone_tool, STATIC_DIR
-from app.database import get_alerts, get_analytics_summary
+from app.agent import root_agent
 from app.app_utils.telemetry import setup_telemetry
+from app.database import get_alerts, get_analytics_summary
+from app.tools import STATIC_DIR, scan_zone_tool
 
 # Initialize Telemetry (Arize Phoenix & GCP Agent Engine)
 setup_telemetry()
@@ -59,12 +60,12 @@ class ScanRequest(BaseModel):
 
 class ChatRequest(BaseModel):
     message: str
-    session_id: Optional[str] = "default_session"
-    user_id: Optional[str] = "default_user"
+    session_id: str | None = "default_session"
+    user_id: str | None = "default_user"
 
 # Endpoints
 @app.get("/api/v1/alerts")
-async def fetch_alerts(query: Optional[str] = None):
+async def fetch_alerts(query: str | None = None):
     """Retrieves logged alerts from the database."""
     try:
         alerts = await get_alerts(query)
@@ -109,23 +110,23 @@ async def chat_stream(request: ChatRequest):
         try:
             runner = Runner(agent=root_agent, app_name="sentinel", session_service=session_service)
             new_msg = types.Content(role="user", parts=[types.Part.from_text(text=request.message)])
-            
+
             async for event in runner.run_async(user_id=user_id, session_id=session_id, new_message=new_msg):
                 author = event.author
                 text = ""
                 if event.content and event.content.parts:
                     text = "".join([p.text for p in event.content.parts if p.text])
-                
+
                 # Check for tool/function calls
                 func_calls = []
                 for fc in event.get_function_calls():
                     func_calls.append({"name": fc.name, "args": dict(fc.args) if fc.args else {}})
-                
+
                 # Check for tool/function responses
                 func_responses = []
                 for fr in event.get_function_responses():
                     func_responses.append({"name": fr.name, "response": fr.response})
-                
+
                 chunk = {
                     "id": event.id,
                     "author": author,
@@ -134,10 +135,10 @@ async def chat_stream(request: ChatRequest):
                     "function_responses": func_responses,
                     "is_final": event.is_final_response()
                 }
-                
+
                 yield f"data: {json.dumps(chunk)}\n\n"
         except Exception as e:
-            err_chunk = {"id": "error", "author": "system", "text": f"Error running agent: {str(e)}", "is_final": True}
+            err_chunk = {"id": "error", "author": "system", "text": f"Error running agent: {e!s}", "is_final": True}
             yield f"data: {json.dumps(err_chunk)}\n\n"
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")

@@ -1,0 +1,38 @@
+# Virtual Environments
+.venv/
+backend/.venv/
+venv/
+env/
+
+# Python Cache & Lint files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.ruff_cache/
+
+# Database files (local fallbacks)
+backend/alerts_db.json
+backend/scans_db.json
+alerts_db.json
+scans_db.json
+*.json.log
+
+# Secret Credentials (must be mounted, not baked in)
+credentials/
+backend/credentials/
+*.env
+backend/*.env
+backend/token.json
+
+# Version control
+.git/
+.gitignore
+.github/
+
+# IDE / System metadata
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

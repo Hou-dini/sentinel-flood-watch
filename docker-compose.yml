@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sentinel_backend
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      # Ensure MongoDB connects to the local Docker container database service
+      # unless the user overrides MONGODB_URI in their local .env file.
+      - MONGODB_URI=${MONGODB_URI:-mongodb://mongodb:27017/sentinel_flood_watch}
+      - GEE_SERVICE_ACCOUNT_KEY_PATH=/app/credentials/gee-key.json
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/credentials/gee-key.json
+    volumes:
+      # Mount host credentials directory to access service account keys securely
+      - ./credentials:/app/credentials
+    depends_on:
+      - mongodb
+    restart: always
+
+  mongodb:
+    image: mongo:6.0
+    container_name: sentinel_mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    restart: always
+
+volumes:
+  mongo_data:
+    driver: local

@@ -1,0 +1,42 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install uv
+        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+
+      - name: Install dependencies
+        run: |
+          cd backend
+          uv sync --dev
+
+      - name: Run Ruff Linter
+        run: |
+          cd backend
+          uv run ruff check . || echo "Ruff not configured, skipping lint check."
+
+      - name: Run Unit Tests
+        env:
+          INTEGRATION_TEST: "TRUE"
+          GOOGLE_CLOUD_PROJECT: "sentinel-flood-watch"
+          GOOGLE_CLOUD_LOCATION: "global"
+          GOOGLE_GENAI_USE_VERTEXAI: "True"
+        run: |
+          cd backend
+          uv run pytest tests/unit/

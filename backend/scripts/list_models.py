@@ -1,4 +1,5 @@
 import os
+
 from dotenv import load_dotenv
 from google import genai
 
@@ -9,21 +10,21 @@ def list_models():
     use_vertex = os.environ.get("GOOGLE_GENAI_USE_VERTEXAI", "True").lower() == "true"
     project = os.environ.get("GOOGLE_CLOUD_PROJECT")
     location = os.environ.get("GOOGLE_CLOUD_LOCATION", "global")
-    
+
     print("=== Environment Configuration ===")
     print(f"GOOGLE_CLOUD_PROJECT: {project}")
     print(f"GOOGLE_CLOUD_LOCATION: {location}")
     print(f"GOOGLE_GENAI_USE_VERTEXAI: {use_vertex}")
     print(f"GOOGLE_APPLICATION_CREDENTIALS: {os.environ.get('GOOGLE_APPLICATION_CREDENTIALS')}")
     print("=================================\n")
-    
+
     print("Initializing Google GenAI Client...")
     try:
         client = genai.Client()
-        
+
         print("Querying models via SDK...")
         models = client.models.list()
-        
+
         print("\nAvailable Models:")
         count = 0
         for m in models:
@@ -37,7 +38,7 @@ def list_models():
             if description:
                 print(f"   Description: {description[:100]}...")
             print("-" * 40)
-            
+
     except Exception as e:
         print(f"\n[ERROR] Failed to list models: {e}")
         print("\nSuggestions for resolving authentication/permissions:")
