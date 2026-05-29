@@ -404,12 +404,13 @@ body {
     align-items: stretch;
     justify-content: space-between;
     padding: 10px;
+    flex: 1;
 }
 
 .comparison-slider {
     position: relative;
     flex: 1;
-    height: 180px;
+    height: 100%;
     border-radius: 10px;
     overflow: hidden;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
