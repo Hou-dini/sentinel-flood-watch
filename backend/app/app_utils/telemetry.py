@@ -58,11 +58,39 @@ def setup_telemetry() -> str | None:
         # Phoenix project configuration
         project = os.environ.get("PHOENIX_PROJECT_NAME", "sentinel-flood-watch")
 
-        # Avoid OTLP 401 Unauthorized errors by disabling cloud collector endpoint when API key is missing
-        if not os.environ.get("PHOENIX_API_KEY"):
-            if os.environ.get("PHOENIX_COLLECTOR_ENDPOINT") == "https://app.phoenix.arize.com":
-                logging.info("Arize Phoenix API key is missing. Falling back to local collector to avoid 401 unauthorized errors.")
+        # Avoid OTLP 401 Unauthorized errors by validating the cloud collector credentials at startup
+        endpoint = os.environ.get("PHOENIX_COLLECTOR_ENDPOINT", "").rstrip("/")
+        api_key = os.environ.get("PHOENIX_API_KEY", "").strip()
+
+        if endpoint.startswith("https://app.phoenix.arize.com") or "phoenix.arize.com" in endpoint:
+            if not api_key or "your_" in api_key:
+                logging.info("Arize Phoenix API key is missing or placeholder. Falling back to local collector to avoid 401 unauthorized errors.")
                 os.environ.pop("PHOENIX_COLLECTOR_ENDPOINT", None)
+                os.environ.pop("PHOENIX_API_KEY", None)
+            else:
+                # Fast connection check to verify if the API key is active and valid
+                try:
+                    import urllib.error
+                    import urllib.request
+
+                    test_url = f"{endpoint}/v1/traces" if not endpoint.endswith("/v1/traces") else endpoint
+                    req = urllib.request.Request(
+                        test_url,
+                        method="GET",
+                        headers={"Authorization": f"Bearer {api_key}"}
+                    )
+                    try:
+                        with urllib.request.urlopen(req, timeout=2.0):
+                            pass
+                    except urllib.error.HTTPError as e:
+                        if e.code == 401:
+                            logging.warning("Arize Phoenix API key is invalid or expired (HTTP 401). Falling back to local collector to avoid trace export errors.")
+                            os.environ.pop("PHOENIX_COLLECTOR_ENDPOINT", None)
+                            os.environ.pop("PHOENIX_API_KEY", None)
+                        else:
+                            logging.info(f"Arize Phoenix API key validation response code: {e.code}")
+                except Exception as e:
+                    logging.info(f"Arize Phoenix startup validation skipped: {e}")
 
         # Initialize tracer provider
         tracer_provider = register(
