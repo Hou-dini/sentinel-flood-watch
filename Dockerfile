@@ -42,5 +42,5 @@ EXPOSE 8000
 
 WORKDIR /app/backend
 
-# Run Uvicorn server in production mode
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Run Uvicorn server in production mode, dynamically binding to the Cloud Run PORT
+CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
