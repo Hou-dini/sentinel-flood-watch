@@ -40,3 +40,26 @@ jobs:
         run: |
           cd backend
           uv run pytest tests/unit/
+
+  deploy:
+    name: Deploy to Cloud Run
+    needs: lint-and-test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Google Auth
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Deploy to Cloud Run
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: sentinel-flood-watch
+          region: europe-west1
+          source: ./
+
