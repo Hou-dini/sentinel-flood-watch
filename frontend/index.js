@@ -1,5 +1,5 @@
 // API Endpoint configuration
-const API_BASE_URL = "http://localhost:8000";
+const API_BASE_URL = window.location.origin;
 
 // Accra sites database coordinates
 const RISK_ZONES = {
