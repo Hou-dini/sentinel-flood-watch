@@ -41,6 +41,7 @@ async def save_alert(alert_doc: dict) -> str:
     if not is_local:
         try:
             res = await db_conn.alerts.insert_one(alert_doc)
+            alert_doc["_id"] = str(res.inserted_id)
             return str(res.inserted_id)
         except Exception as e:
             logging.error(f"Error saving to MongoDB: {e}. Saving locally instead.")
@@ -102,7 +103,8 @@ async def save_scan(scan_doc: dict):
     db_conn, is_local = get_db()
     if not is_local:
         try:
-            await db_conn.scans.insert_one(scan_doc)
+            res = await db_conn.scans.insert_one(scan_doc)
+            scan_doc["_id"] = str(res.inserted_id)
             return
         except Exception as e:
             logging.error(f"Error saving scan to MongoDB: {e}")
