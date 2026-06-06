@@ -161,6 +161,11 @@
     - Created `app/tools/mcp/mongodb_mcp_tool.py` and exported it via `app/tools/mcp/__init__.py`.
     - Updated the main `app/tools/__init__.py` module to import and expose `mongodb_mcp_tool` uniformly alongside other system tools.
     - Simplified `app/agent.py` to import `mongodb_mcp_tool` cleanly from `app.tools`, preserving all functionality while reducing code clutter in the agent definition.
+12. **Pydantic Model Schema Enforcement:**
+    - Enforced structured schemas for core domain entities by creating a new `app/models/` package.
+    - Defined `Coordinates`, `Alert`, and `Scan` Pydantic models in `app/models/coordinates.py`, `app/models/alert.py`, and `app/models/scan.py` respectively.
+    - Integrated model validation directly into `DatabaseService` reads and writes (`save_alert`, `get_alerts`, `save_scan`, and `get_analytics_summary`), raising validation errors if data does not match the schemas.
+    - Updated the test suite in `tests/unit/test_database_service.py` to pass valid mock data matching the new schemas, ensuring all 9 unit tests pass.
 
 ### Next Steps
 - Verify end-to-end functionality of the deployed live endpoint.
