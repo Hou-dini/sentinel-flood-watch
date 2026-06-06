@@ -7,7 +7,12 @@ from app.database import save_scan
 from app.tools.common import generate_mock_satellite_images, init_earth_engine
 
 
-async def scan_zone_tool(latitude: float, longitude: float, site_name: str, tool_context: ToolContext | None = None) -> dict:
+async def scan_zone_tool(
+    latitude: float,
+    longitude: float,
+    site_name: str,
+    tool_context: ToolContext | None = None,
+) -> dict:
     """Scans coordinates using satellite imagery (Sentinel-2) to detect environmental changes.
 
     Retrieves baseline (historical) and current imagery, computes NDVI and MNDWI indices,
@@ -33,23 +38,47 @@ async def scan_zone_tool(latitude: float, longitude: float, site_name: str, tool
     if gee_success:
         try:
             import ee
-            logging.info("Earth Engine pipeline active, querying Sentinel-2 Harmonized collection...")
+
+            logging.info(
+                "Earth Engine pipeline active, querying Sentinel-2 Harmonized collection..."
+            )
             point = ee.Geometry.Point([longitude, latitude])
             region = point.buffer(1200).bounds()
 
-            s2 = ee.ImageCollection('COPERNICUS/S2_SR_HARMONIZED')
+            s2 = ee.ImageCollection("COPERNICUS/S2_SR_HARMONIZED")
 
-            # Baseline: 2020
-            baseline_col = s2.filterBounds(point) \
-                             .filterDate('2020-01-01', '2021-12-31') \
-                             .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', 20)) \
-                             .sort('CLOUDY_PIXEL_PERCENTAGE')
+            # Calculate dynamic date windows
+            today = datetime.date.today()
 
-            # Current: 2025-2026
-            current_col = s2.filterBounds(point) \
-                            .filterDate('2025-01-01', '2026-05-26') \
-                            .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', 20)) \
-                            .sort('CLOUDY_PIXEL_PERCENTAGE')
+            # Current: last 540 days ending today
+            current_end = today.strftime("%Y-%m-%d")
+            current_start = (today - datetime.timedelta(days=540)).strftime("%Y-%m-%d")
+
+            # Baseline: same duration offset by exactly 5 years (1826 days to account for leap years)
+            baseline_end = (today - datetime.timedelta(days=1826)).strftime("%Y-%m-%d")
+            baseline_start = (today - datetime.timedelta(days=1826 + 540)).strftime(
+                "%Y-%m-%d"
+            )
+
+            logging.info(
+                f"Filtering Sentinel-2 imagery - Baseline: {baseline_start} to {baseline_end} | Current: {current_start} to {current_end}"
+            )
+
+            # Baseline Collection
+            baseline_col = (
+                s2.filterBounds(point)
+                .filterDate(baseline_start, baseline_end)
+                .filter(ee.Filter.lt("CLOUDY_PIXEL_PERCENTAGE", 20))
+                .sort("CLOUDY_PIXEL_PERCENTAGE")
+            )
+
+            # Current Collection
+            current_col = (
+                s2.filterBounds(point)
+                .filterDate(current_start, current_end)
+                .filter(ee.Filter.lt("CLOUDY_PIXEL_PERCENTAGE", 20))
+                .sort("CLOUDY_PIXEL_PERCENTAGE")
+            )
 
             if baseline_col.size().getInfo() > 0 and current_col.size().getInfo() > 0:
                 base_img = ee.Image(baseline_col.first())
@@ -57,36 +86,40 @@ async def scan_zone_tool(latitude: float, longitude: float, site_name: str, tool
 
                 # Visual parameters for RGB
                 rgb_params = {
-                    'bands': ['B4', 'B3', 'B2'],
-                    'min': 0,
-                    'max': 3000,
-                    'region': region,
-                    'dimensions': 400,
-                    'format': 'png'
+                    "bands": ["B4", "B3", "B2"],
+                    "min": 0,
+                    "max": 3000,
+                    "region": region,
+                    "dimensions": 400,
+                    "format": "png",
                 }
 
                 # Compute NDVI
-                base_ndvi = base_img.normalizedDifference(['B8', 'B4']).rename('NDVI')
-                curr_ndvi = curr_img.normalizedDifference(['B8', 'B4']).rename('NDVI')
+                base_ndvi = base_img.normalizedDifference(["B8", "B4"]).rename("NDVI")
+                curr_ndvi = curr_img.normalizedDifference(["B8", "B4"]).rename("NDVI")
                 ndvi_params = {
-                    'min': -0.1,
-                    'max': 0.8,
-                    'palette': ['red', 'yellow', 'green'],
-                    'region': region,
-                    'dimensions': 400,
-                    'format': 'png'
+                    "min": -0.1,
+                    "max": 0.8,
+                    "palette": ["red", "yellow", "green"],
+                    "region": region,
+                    "dimensions": 400,
+                    "format": "png",
                 }
 
                 # Compute MNDWI
-                base_mndwi = base_img.normalizedDifference(['B3', 'B11']).rename('MNDWI')
-                curr_mndwi = curr_img.normalizedDifference(['B3', 'B11']).rename('MNDWI')
+                base_mndwi = base_img.normalizedDifference(["B3", "B11"]).rename(
+                    "MNDWI"
+                )
+                curr_mndwi = curr_img.normalizedDifference(["B3", "B11"]).rename(
+                    "MNDWI"
+                )
                 mndwi_params = {
-                    'min': -0.2,
-                    'max': 0.6,
-                    'palette': ['black', 'blue', 'cyan'],
-                    'region': region,
-                    'dimensions': 400,
-                    'format': 'png'
+                    "min": -0.2,
+                    "max": 0.6,
+                    "palette": ["black", "blue", "cyan"],
+                    "region": region,
+                    "dimensions": 400,
+                    "format": "png",
                 }
 
                 # Retrieve URL links
@@ -101,12 +134,44 @@ async def scan_zone_tool(latitude: float, longitude: float, site_name: str, tool
 
                 # Calculate mean metrics inside region to detect real anomaly
                 try:
-                    base_mean_ndvi = base_ndvi.reduceRegion(reducer=ee.Reducer.mean(), geometry=region, scale=30).get('NDVI').getInfo()
-                    curr_mean_ndvi = curr_ndvi.reduceRegion(reducer=ee.Reducer.mean(), geometry=region, scale=30).get('NDVI').getInfo()
-                    base_mean_mndwi = base_mndwi.reduceRegion(reducer=ee.Reducer.mean(), geometry=region, scale=30).get('MNDWI').getInfo()
-                    curr_mean_mndwi = curr_mndwi.reduceRegion(reducer=ee.Reducer.mean(), geometry=region, scale=30).get('MNDWI').getInfo()
+                    base_mean_ndvi = (
+                        base_ndvi.reduceRegion(
+                            reducer=ee.Reducer.mean(), geometry=region, scale=30
+                        )
+                        .get("NDVI")
+                        .getInfo()
+                    )
+                    curr_mean_ndvi = (
+                        curr_ndvi.reduceRegion(
+                            reducer=ee.Reducer.mean(), geometry=region, scale=30
+                        )
+                        .get("NDVI")
+                        .getInfo()
+                    )
+                    base_mean_mndwi = (
+                        base_mndwi.reduceRegion(
+                            reducer=ee.Reducer.mean(), geometry=region, scale=30
+                        )
+                        .get("MNDWI")
+                        .getInfo()
+                    )
+                    curr_mean_mndwi = (
+                        curr_mndwi.reduceRegion(
+                            reducer=ee.Reducer.mean(), geometry=region, scale=30
+                        )
+                        .get("MNDWI")
+                        .getInfo()
+                    )
 
-                    if all(x is not None for x in [base_mean_ndvi, curr_mean_ndvi, base_mean_mndwi, curr_mean_mndwi]):
+                    if all(
+                        x is not None
+                        for x in [
+                            base_mean_ndvi,
+                            curr_mean_ndvi,
+                            base_mean_mndwi,
+                            curr_mean_mndwi,
+                        ]
+                    ):
                         ndvi_diff = base_mean_ndvi - curr_mean_ndvi
                         mndwi_diff = base_mean_mndwi - curr_mean_mndwi
 
@@ -116,8 +181,8 @@ async def scan_zone_tool(latitude: float, longitude: float, site_name: str, tool
 
                         evidence_summary = (
                             f"Live Earth Engine analysis completed for {site_name}. "
-                            f"NDVI changed by {ndvi_diff*100:+.1f}% (from {base_mean_ndvi:.3f} to {curr_mean_ndvi:.3f}), indicating vegetation changes. "
-                            f"MNDWI changed by {mndwi_diff*100:+.1f}% (from {base_mean_mndwi:.3f} to {curr_mean_mndwi:.3f}), indicating water channel alterations."
+                            f"NDVI changed by {ndvi_diff * 100:+.1f}% (from {base_mean_ndvi:.3f} to {curr_mean_ndvi:.3f}), indicating vegetation changes. "
+                            f"MNDWI changed by {mndwi_diff * 100:+.1f}% (from {base_mean_mndwi:.3f} to {curr_mean_mndwi:.3f}), indicating water channel alterations."
                         )
                     else:
                         has_anomaly = True
@@ -127,9 +192,13 @@ async def scan_zone_tool(latitude: float, longitude: float, site_name: str, tool
                     has_anomaly = True
                     evidence_summary = f"Sentinel-2 scans processed for {site_name}. Visual anomalies and structural clearing detected in the buffer zone."
             else:
-                logging.warning("Not enough clear Sentinel-2 imagery found in selected date bounds. Falling back to mock imagery.")
+                logging.warning(
+                    "Not enough clear Sentinel-2 imagery found in selected date bounds. Falling back to mock imagery."
+                )
         except Exception as e:
-            logging.error(f"Error in Earth Engine image compilation: {e}. Falling back to mock renderer.")
+            logging.error(
+                f"Error in Earth Engine image compilation: {e}. Falling back to mock renderer."
+            )
 
     # Fallback to Mock Generator
     if not urls:
@@ -150,9 +219,10 @@ async def scan_zone_tool(latitude: float, longitude: float, site_name: str, tool
         "current_ndvi": urls["current_ndvi"],
         "baseline_mndwi": urls["baseline_mndwi"],
         "current_mndwi": urls["current_mndwi"],
-        "gee_integrated": gee_success and (not urls["baseline_rgb"].startswith("/static/")),
+        "gee_integrated": gee_success
+        and (not urls["baseline_rgb"].startswith("/static/")),
         "anomaly_detected": has_anomaly,
-        "evidence_summary": evidence_summary
+        "evidence_summary": evidence_summary,
     }
 
     # Log scan in database
@@ -161,7 +231,8 @@ async def scan_zone_tool(latitude: float, longitude: float, site_name: str, tool
         "coordinates": {"latitude": latitude, "longitude": longitude},
         "timestamp": datetime.datetime.now().isoformat(),
         "anomaly_detected": has_anomaly,
-        "gee_integrated": gee_success and (not urls["baseline_rgb"].startswith("/static/"))
+        "gee_integrated": gee_success
+        and (not urls["baseline_rgb"].startswith("/static/")),
     }
     await save_scan(scan_doc)
 
