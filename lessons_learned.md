@@ -13,10 +13,12 @@ This document captures engineering lessons, technical challenges, options consid
 * **Solution:** Implement the OpenTelemetry `openinference-instrumentation-google-adk` package. Configure environment variables like `PHOENIX_API_KEY` and `PHOENIX_COLLECTOR_ENDPOINT` to direct traces to the Phoenix collector.
 * **Trade-Off:** Local vs. Cloud Phoenix. For development, we set up local tracing, but the code is architected to seamlessly point to Phoenix Cloud using standard environment variables.
 
-## 3. Earth Engine Authentication Fallbacks
-* **Problem:** Google Earth Engine requires authentication which can fail during local testing if service account keys are missing.
-* **Solution:** Create a robust dual-mode pipeline. The system attempts to initialize GEE. On failure, it falls back to a high-fidelity **Mock Satellite Image Generator** (using Python's Pillow library to draw and calculate synthetic NDVI and MNDWI bands based on real coordinates).
-* **Rationale:** This ensures the application remains fully testable, interactive, and demonstrable even in environments lacking live cloud authorization.
+## 3. Earth Engine Authentication Fallbacks and Cloud Run ADC
+* **Problem:** Google Earth Engine requires authentication which can fail during local testing if service account keys are missing. Additionally, when deploying to Cloud Run, mounting a local service account key file is insecure, but using standard `ee.Initialize()` with Application Default Credentials (ADC) fails because Cloud Run does not expose a default `GOOGLE_CLOUD_PROJECT` environment variable required by the GEE library to associate the usage quota.
+* **Solution:** 
+  1. We designed a dual-mode pipeline: the system attempts GEE initialization, falling back to a high-fidelity **Mock Satellite Image Generator** (using Python's Pillow library to draw and calculate synthetic NDVI and MNDWI bands based on real coordinates) if it fails completely.
+  2. For Cloud Run, we implemented a secure ADC fallback in `init_earth_engine()`. If the service account key path environment variable is missing, the code dynamically calls `google.auth.default()` to resolve the active GCP Project ID, and then initializes the client using `ee.Initialize(project=project)`.
+* **Rationale:** This ensures the application remains fully secure, testable, and capable of authenticating seamlessly under Cloud Run utilizing the revision service account without hardcoded keys.
 
 ## 4. API Session Interface Behaviors in ADK
 * **Problem:** In Google ADK's session management, `InMemorySessionService.get_session()` returns `None` rather than raising a lookup exception for non-existent session IDs.
