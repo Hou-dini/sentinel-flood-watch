@@ -126,9 +126,14 @@
    - Enforced OIDC attribute condition checking (`assertion.repository == 'Hou-dini/sentinel-flood-watch'`) to comply with GCP Organization Policy constraints.
    - Registered `GCP_WIF_PROVIDER` and `GCP_WIF_SERVICE_ACCOUNT` secrets directly to the GitHub repository using the GitHub CLI (`gh`).
 5. **WIF Developer Skill Contribution:**
-   - Created a custom reusable agent skill named `gcp-wif-github-setup` with permissive open-source metadata (`license: "Apache-2.0"` and `author: "Elikplim Kudowor (Hou-dini)"`), and copied it to the workspace's `skills/` folder to be tracked in version control.
+    - Created a custom reusable agent skill named `gcp-wif-github-setup` with permissive open-source metadata (`license: "Apache-2.0"` and `author: "Elikplim Kudowor (Hou-dini)"`), and copied it to the workspace's `skills/` folder to be tracked in version control.
+6. **Dynamic Earth Engine Date Filtering Refactoring:**
+    - Restored dynamic date calculations in `app/tools/scan_zone_tool.py` based on `datetime.date.today()` to replace the outdated, hardcoded dates (e.g. May 26th).
+    - Configured the rolling window for the current collection to be the last 540 days, and the baseline collection to be a 540-day window offset by exactly 5 years (1826 days) to maintain seasonal consistency and avoid false positives.
+    - Wrote unit tests in `tests/unit/test_scan_zone_tool.py` using `unittest.mock` to verify the calculated dates and mock Google Earth Engine collection filtering.
+    - Ran unit tests and Ruff linter/formatter on the backend to ensure code quality and compliance.
+    - Staged, committed, and pushed the changes to the remote repository.
+    - Monitored the GitHub Actions CI/CD pipeline which successfully built and deployed the updated app to Cloud Run.
 
 ### Next Steps
-- Use the `gh` CLI to investigate the latest CI/CD deployment run status and resolve any build pipeline failures.
 - Verify end-to-end functionality of the deployed live endpoint.
-
