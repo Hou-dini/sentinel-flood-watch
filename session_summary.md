@@ -146,6 +146,11 @@
     - Removed the obsolete `search_alerts_tool.py` and cleaned up package exports in `app/tools/__init__.py`.
     - Updated the `Dockerfile` to install Node.js/npm in the runtime image so that `npx` can successfully launch the MCP server on Cloud Run.
     - Verified all changes against the unit test suite and pushed them to GitHub, triggering a successful CI/CD deployment.
+9. **GEE Refactoring and EarthEngineService Abstraction:**
+    - Abstracted all Google Earth Engine calculations and imagery retrieval out of the 200+ line `scan_zone_tool.py` into a reusable `EarthEngineService` class in `app/services/gee_service.py`.
+    - Simplified `scan_zone_tool.py` to act as a clean ADK tool wrapper, delegating all geometry building, collection queries, index calculations, and statistics reduction to the service object.
+    - Updated unit tests in `tests/unit/test_scan_zone_tool.py` to cover both `EarthEngineService` (asserting date calculations and collection bounds filtering) and `scan_zone_tool` fallback behaviors.
+    - Staged, committed, and pushed the refactoring to remote, leading to a successful CI/CD build and Cloud Run deployment.
 
 ### Next Steps
 - Verify end-to-end functionality of the deployed live endpoint.
