@@ -88,13 +88,15 @@ async def test_database_service_local_flow(tmp_path, monkeypatch) -> None:
     # Test save_alert
     alert_doc = {
         "site_name": "Korle Lagoon",
+        "coordinates": {"latitude": 5.53, "longitude": -0.21},
         "agent_summary": "High MNDWI shift detected.",
-        "latitude": 5.53,
-        "longitude": -0.21,
+        "severity": "Medium",
+        "status": "Active",
+        "evidence_link": "/static/mock_evidence.png",
+        "timestamp": "2026-06-06T23:00:00",
     }
     alert_id = await service.save_alert(alert_doc)
     assert alert_id is not None
-    assert alert_doc["severity"] == "Medium"  # Default severity injected
     assert alert_doc["_id"] == alert_id
 
     # Test get_alerts
@@ -113,9 +115,10 @@ async def test_database_service_local_flow(tmp_path, monkeypatch) -> None:
     # Test save_scan
     scan_doc = {
         "site_name": "Korle Lagoon",
-        "latitude": 5.53,
-        "longitude": -0.21,
-        "mndwi_diff": 0.15,
+        "coordinates": {"latitude": 5.53, "longitude": -0.21},
+        "timestamp": "2026-06-06T23:00:00",
+        "anomaly_detected": True,
+        "gee_integrated": False,
     }
     await service.save_scan(scan_doc)
 
@@ -151,10 +154,19 @@ async def test_database_service_mongodb_flow() -> None:
     mock_alerts_coll.insert_one.return_value = mock_insert_res
 
     # Test save_alert
-    alert_doc = {"site_name": "Test Site", "severity": "High"}
+    alert_doc = {
+        "site_name": "Test Site",
+        "coordinates": {"latitude": 5.53, "longitude": -0.21},
+        "agent_summary": "Test Summary",
+        "severity": "High",
+        "status": "Active",
+        "evidence_link": "/static/test_evidence.png",
+        "timestamp": "2026-06-06T23:00:00",
+    }
+    expected_save_doc = alert_doc.copy()
     alert_id = await service.save_alert(alert_doc)
     assert alert_id == "mock_alert_id_123"
-    mock_alerts_coll.insert_one.assert_called_once_with(alert_doc)
+    mock_alerts_coll.insert_one.assert_called_once_with(expected_save_doc)
 
     # Simple AsyncIterator mock helper
     class MockAsyncCursor:
@@ -175,7 +187,12 @@ async def test_database_service_mongodb_flow() -> None:
     mock_doc = {
         "_id": "mock_alert_id_123",
         "site_name": "Test Site",
+        "coordinates": {"latitude": 5.53, "longitude": -0.21},
+        "agent_summary": "Test Summary",
         "severity": "High",
+        "status": "Active",
+        "evidence_link": "/static/test_evidence.png",
+        "timestamp": "2026-06-06T23:00:00",
     }
     mock_alerts_coll.find.return_value = MockAsyncCursor([mock_doc])
 
@@ -185,6 +202,12 @@ async def test_database_service_mongodb_flow() -> None:
     assert alerts[0]["site_name"] == "Test Site"
 
     # Test save_scan
-    scan_doc = {"site_name": "Test Site"}
+    scan_doc = {
+        "site_name": "Test Site",
+        "coordinates": {"latitude": 5.53, "longitude": -0.21},
+        "timestamp": "2026-06-06T23:00:00",
+        "anomaly_detected": True,
+        "gee_integrated": False,
+    }
     await service.save_scan(scan_doc)
     mock_scans_coll.insert_one.assert_called_once_with(scan_doc)

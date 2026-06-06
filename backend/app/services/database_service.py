@@ -20,6 +20,8 @@ from typing import Any
 
 from motor.motor_asyncio import AsyncIOMotorClient
 
+from app.models import Alert, Scan
+
 
 class DatabaseService:
     """Service to handle database connection and storage operations.
@@ -59,18 +61,27 @@ class DatabaseService:
         logging.info("Using local JSON file-based database.")
         self._initialized = True
 
-    async def save_alert(self, alert_doc: dict[str, Any]) -> str:
+    async def save_alert(self, alert_doc: dict[str, Any] | Alert) -> str:
         """Saves an encroachment alert to database (MongoDB or local JSON)."""
         self.connect()
 
-        if "severity" not in alert_doc:
-            alert_doc["severity"] = "Medium"
+        # Enforce validation
+        if isinstance(alert_doc, dict):
+            if "severity" not in alert_doc:
+                alert_doc["severity"] = "Medium"
+            alert = Alert(**alert_doc)
+        else:
+            alert = alert_doc
+
+        alert_data = alert.model_dump(exclude={"id"})
 
         if not self.use_local_json:
             try:
-                res = await self.db.alerts.insert_one(alert_doc)
-                alert_doc["_id"] = str(res.inserted_id)
-                return str(res.inserted_id)
+                res = await self.db.alerts.insert_one(alert_data)
+                alert_id = str(res.inserted_id)
+                if isinstance(alert_doc, dict):
+                    alert_doc["_id"] = alert_id
+                return alert_id
             except Exception as e:
                 logging.error(
                     f"Error saving alert to MongoDB: {e}. Saving locally instead."
@@ -87,11 +98,14 @@ class DatabaseService:
                 alerts = []
 
         alert_id = str(uuid.uuid4())
-        alert_doc["_id"] = alert_id
-        alerts.append(alert_doc)
+        alert_data["_id"] = alert_id
+        alerts.append(alert_data)
 
         with open(db_file, "w") as f:
             json.dump(alerts, f, indent=2, default=str)
+
+        if isinstance(alert_doc, dict):
+            alert_doc["_id"] = alert_id
 
         return alert_id
 
@@ -105,7 +119,9 @@ class DatabaseService:
                 cursor = self.db.alerts.find()
                 async for doc in cursor:
                     doc["id"] = str(doc.pop("_id"))
-                    results.append(doc)
+                    # Enforce validation
+                    alert = Alert(**doc)
+                    results.append(alert.model_dump())
                 if query_str:
                     query_str = query_str.lower()
                     results = [
@@ -126,28 +142,39 @@ class DatabaseService:
         try:
             with open(db_file) as f:
                 alerts = json.load(f)
+                validated_alerts = []
                 for alert in alerts:
                     if "_id" in alert:
                         alert["id"] = str(alert.pop("_id"))
+                    # Enforce validation
+                    v_alert = Alert(**alert)
+                    validated_alerts.append(v_alert.model_dump())
                 if query_str:
                     query_str = query_str.lower()
-                    alerts = [
+                    validated_alerts = [
                         r
-                        for r in alerts
+                        for r in validated_alerts
                         if query_str in r.get("site_name", "").lower()
                         or query_str in r.get("agent_summary", "").lower()
                     ]
-                return alerts
+                return validated_alerts
         except Exception:
             return []
 
-    async def save_scan(self, scan_doc: dict[str, Any]) -> None:
+    async def save_scan(self, scan_doc: dict[str, Any] | Scan) -> None:
         """Saves scan metrics for live analytics reporting."""
         self.connect()
 
+        if isinstance(scan_doc, dict):
+            scan = Scan(**scan_doc)
+        else:
+            scan = scan_doc
+
+        scan_data = scan.model_dump(exclude={"id"})
+
         if not self.use_local_json:
             try:
-                await self.db.scans.insert_one(scan_doc)
+                await self.db.scans.insert_one(scan_data)
                 return
             except Exception as e:
                 logging.error(f"Error saving scan to MongoDB: {e}")
@@ -161,7 +188,7 @@ class DatabaseService:
                     scans = json.load(f)
             except Exception:
                 scans = []
-        scans.append(scan_doc)
+        scans.append(scan_data)
         with open(db_file, "w") as f:
             json.dump(scans, f, indent=2, default=str)
 
@@ -176,7 +203,10 @@ class DatabaseService:
             try:
                 cursor = self.db.scans.find()
                 async for doc in cursor:
-                    scans.append(doc)
+                    if "_id" in doc:
+                        doc["id"] = str(doc.pop("_id"))
+                    v_scan = Scan(**doc)
+                    scans.append(v_scan.model_dump())
             except Exception as e:
                 logging.error(f"Error getting scans from MongoDB: {e}")
         else:
@@ -184,7 +214,12 @@ class DatabaseService:
             if os.path.exists(db_file):
                 try:
                     with open(db_file) as f:
-                        scans = json.load(f)
+                        scans_data = json.load(f)
+                        for s in scans_data:
+                            if "_id" in s:
+                                s["id"] = str(s.pop("_id"))
+                            v_scan = Scan(**s)
+                            scans.append(v_scan.model_dump())
                 except Exception:
                     scans = []
 
