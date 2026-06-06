@@ -42,10 +42,7 @@ async def web_search_tool(query: str, tool_context: ToolContext | None = None) -
             return {"status": "success", "query": query, "results": results}
 
         # Fallback to geocoding if they query coordinates in search
-        if any(
-            w in query.lower()
-            for w in ["coordinate", "lat", "lon", "location", "weija", "dam"]
-        ):
+        if any(w in query.lower() for w in ["coordinate", "lat", "lon", "location"]):
             # Extract clean location name
             cleaned_loc = query.lower()
             for stop in [

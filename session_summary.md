@@ -151,6 +151,11 @@
     - Simplified `scan_zone_tool.py` to act as a clean ADK tool wrapper, delegating all geometry building, collection queries, index calculations, and statistics reduction to the service object.
     - Updated unit tests in `tests/unit/test_scan_zone_tool.py` to cover both `EarthEngineService` (asserting date calculations and collection bounds filtering) and `scan_zone_tool` fallback behaviors.
     - Staged, committed, and pushed the refactoring to remote, leading to a successful CI/CD build and Cloud Run deployment.
+10. **Database Refactoring and DatabaseService Abstraction:**
+    - Abstracted all MongoDB Atlas and local file-based JSON storage operations out of `app/database.py` into a reusable `DatabaseService` class under `app/services/database_service.py`, eliminating global mutable connection state.
+    - Updated `app/database.py` to act as a backward-compatible wrapper that delegates calls to a singleton `db_service = DatabaseService()` instance.
+    - Created a new test suite in `tests/unit/test_database_service.py` to cover both the local JSON fallback flow and the mocked MongoDB database connection/operations flow.
+    - Ran local pytest validation successfully and verified the automated CI/CD pipeline built and deployed the changes to Cloud Run.
 
 ### Next Steps
 - Verify end-to-end functionality of the deployed live endpoint.
