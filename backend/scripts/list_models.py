@@ -6,6 +6,7 @@ from google import genai
 # Load environment variables
 load_dotenv()
 
+
 def list_models():
     use_vertex = os.environ.get("GOOGLE_GENAI_USE_VERTEXAI", "True").lower() == "true"
     project = os.environ.get("GOOGLE_CLOUD_PROJECT")
@@ -15,7 +16,9 @@ def list_models():
     print(f"GOOGLE_CLOUD_PROJECT: {project}")
     print(f"GOOGLE_CLOUD_LOCATION: {location}")
     print(f"GOOGLE_GENAI_USE_VERTEXAI: {use_vertex}")
-    print(f"GOOGLE_APPLICATION_CREDENTIALS: {os.environ.get('GOOGLE_APPLICATION_CREDENTIALS')}")
+    print(
+        f"GOOGLE_APPLICATION_CREDENTIALS: {os.environ.get('GOOGLE_APPLICATION_CREDENTIALS')}"
+    )
     print("=================================\n")
 
     print("Initializing Google GenAI Client...")
@@ -43,11 +46,20 @@ def list_models():
         print(f"\n[ERROR] Failed to list models: {e}")
         print("\nSuggestions for resolving authentication/permissions:")
         print("1. If using Vertex AI (GOOGLE_GENAI_USE_VERTEXAI=True):")
-        print("   - Ensure the Vertex AI API (aiplatform.googleapis.com) is enabled in your Google Cloud Console.")
-        print("   - Make sure your Service Account has the 'Vertex AI User' role (roles/aiplatform.user) assigned.")
-        print("   - Note that Google Cloud Location 'global' might not support end-user model listings; consider changing GOOGLE_CLOUD_LOCATION to 'us-central1' in your .env.")
+        print(
+            "   - Ensure the Vertex AI API (aiplatform.googleapis.com) is enabled in your Google Cloud Console."
+        )
+        print(
+            "   - Make sure your Service Account has the 'Vertex AI User' role (roles/aiplatform.user) assigned."
+        )
+        print(
+            "   - Note that Google Cloud Location 'global' might not support end-user model listings; consider changing GOOGLE_CLOUD_LOCATION to 'us-central1' in your .env."
+        )
         print("2. If using Gemini API Studio (GOOGLE_GENAI_USE_VERTEXAI=False):")
-        print("   - Ensure GEMINI_API_KEY environment variable is set in your .env file.")
+        print(
+            "   - Ensure GEMINI_API_KEY environment variable is set in your .env file."
+        )
+
 
 if __name__ == "__main__":
     list_models()

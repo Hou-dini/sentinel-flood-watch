@@ -20,6 +20,12 @@ RUN cd backend && uv sync --frozen --no-cache --no-install-project
 # Stage 2: Final runtime environment
 FROM python:3.11-slim
 
+# Install curl and Node.js for running Node-based MCP servers
+RUN apt-get update && apt-get install -y curl && \
+    curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
+    apt-get install -y nodejs && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
 # Copy virtual environment and packages from builder stage

@@ -12,6 +12,7 @@ db_client = None
 db = None
 use_local_json = True
 
+
 def get_db():
     global db_client, db, use_local_json
     if db is not None:
@@ -25,11 +26,14 @@ def get_db():
             logging.info("Connected to MongoDB Atlas successfully.")
             return db, False
         except Exception as e:
-            logging.warning(f"Failed to connect to MongoDB Atlas: {e}. Falling back to local file-based database.")
+            logging.warning(
+                f"Failed to connect to MongoDB Atlas: {e}. Falling back to local file-based database."
+            )
 
     use_local_json = True
     logging.info("Using local JSON file-based database (alerts_db.json).")
     return None, True
+
 
 async def save_alert(alert_doc: dict) -> str:
     db_conn, is_local = get_db()
@@ -65,6 +69,7 @@ async def save_alert(alert_doc: dict) -> str:
 
     return alert_id
 
+
 async def get_alerts(query_str: str | None = None) -> list:
     db_conn, is_local = get_db()
     results = []
@@ -77,7 +82,12 @@ async def get_alerts(query_str: str | None = None) -> list:
                 results.append(doc)
             if query_str:
                 query_str = query_str.lower()
-                results = [r for r in results if query_str in r.get("site_name", "").lower() or query_str in r.get("agent_summary", "").lower()]
+                results = [
+                    r
+                    for r in results
+                    if query_str in r.get("site_name", "").lower()
+                    or query_str in r.get("agent_summary", "").lower()
+                ]
             return results
         except Exception as e:
             logging.error(f"Error getting from MongoDB: {e}. Reading locally instead.")
@@ -93,10 +103,16 @@ async def get_alerts(query_str: str | None = None) -> list:
                     alert["id"] = str(alert.pop("_id"))
             if query_str:
                 query_str = query_str.lower()
-                alerts = [r for r in alerts if query_str in r.get("site_name", "").lower() or query_str in r.get("agent_summary", "").lower()]
+                alerts = [
+                    r
+                    for r in alerts
+                    if query_str in r.get("site_name", "").lower()
+                    or query_str in r.get("agent_summary", "").lower()
+                ]
             return alerts
     except Exception:
         return []
+
 
 async def save_scan(scan_doc: dict):
     """Saves scan metrics for live analytics reporting."""
@@ -121,6 +137,7 @@ async def save_scan(scan_doc: dict):
     scans.append(scan_doc)
     with open(db_file, "w") as f:
         json.dump(scans, f, indent=2, default=str)
+
 
 async def get_analytics_summary() -> dict:
     """Aggregates system activity (scans, alerts, severity) for live dashboards."""
@@ -173,5 +190,5 @@ async def get_analytics_summary() -> dict:
         "alerts_by_severity": severity_counts,
         "alerts_by_site": site_counts,
         "success_rate": success_rate,
-        "active_monitored_zones": 4
+        "active_monitored_zones": 4,
     }

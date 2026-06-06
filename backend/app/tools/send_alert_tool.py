@@ -6,7 +6,14 @@ from google.adk.tools.tool_context import ToolContext
 from app.database import save_alert
 
 
-async def send_alert_tool(latitude: float, longitude: float, site_name: str, agent_summary: str, severity: str = "Medium", tool_context: ToolContext | None = None) -> dict:
+async def send_alert_tool(
+    latitude: float,
+    longitude: float,
+    site_name: str,
+    agent_summary: str,
+    severity: str = "Medium",
+    tool_context: ToolContext | None = None,
+) -> dict:
     """Logs an official encroachment alert to the persistent database and notifies authorities.
 
     Args:
@@ -35,7 +42,7 @@ async def send_alert_tool(latitude: float, longitude: float, site_name: str, age
         "agent_summary": agent_summary,
         "severity": severity,
         "status": "Active",
-        "evidence_link": evidence_url
+        "evidence_link": evidence_url,
     }
 
     alert_id = await save_alert(alert_doc)
@@ -44,7 +51,7 @@ async def send_alert_tool(latitude: float, longitude: float, site_name: str, age
         "status": "success",
         "alert_id": alert_id,
         "message": "Alert successfully logged. Notifications dispatched to NADMO & Accra Metropolitan Assembly.",
-        "record": alert_doc
+        "record": alert_doc,
     }
 
     if tool_context:

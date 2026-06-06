@@ -29,7 +29,7 @@ setup_telemetry()
 app = FastAPI(
     title="Sentinel Flood-Watch API",
     description="Agentic monitoring and alert API for Accra flood zones.",
-    version="1.0.0"
+    version="1.0.0",
 )
 
 # CORS Setup for local dashboard communication
@@ -48,9 +48,15 @@ session_service = InMemorySessionService()
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 # Mount Frontend Dashboard
-FRONTEND_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "frontend")
+FRONTEND_DIR = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+    "frontend",
+)
 if os.path.exists(FRONTEND_DIR):
-    app.mount("/dashboard", StaticFiles(directory=FRONTEND_DIR, html=True), name="dashboard")
+    app.mount(
+        "/dashboard", StaticFiles(directory=FRONTEND_DIR, html=True), name="dashboard"
+    )
+
 
 # Request Models
 class ScanRequest(BaseModel):
@@ -58,10 +64,12 @@ class ScanRequest(BaseModel):
     longitude: float
     site_name: str
 
+
 class ChatRequest(BaseModel):
     message: str
     session_id: str | None = "default_session"
     user_id: str | None = "default_user"
+
 
 # Endpoints
 @app.get("/api/v1/alerts")
@@ -73,6 +81,7 @@ async def fetch_alerts(query: str | None = None):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @app.get("/api/v1/analytics")
 async def fetch_analytics():
     """Retrieves live analytics (total alerts, scans processed, success rate)."""
@@ -82,6 +91,7 @@ async def fetch_analytics():
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @app.post("/api/v1/scan-zone")
 async def scan_zone(request: ScanRequest):
     """Directly triggers satellite scan for given coordinates."""
@@ -89,11 +99,12 @@ async def scan_zone(request: ScanRequest):
         result = await scan_zone_tool(
             latitude=request.latitude,
             longitude=request.longitude,
-            site_name=request.site_name
+            site_name=request.site_name,
         )
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.post("/api/v1/chat")
 async def chat_stream(request: ChatRequest):
@@ -102,16 +113,26 @@ async def chat_stream(request: ChatRequest):
     user_id = request.user_id or "default_user"
 
     # Ensure session exists in the service
-    session = await session_service.get_session(app_name="sentinel", user_id=user_id, session_id=session_id)
+    session = await session_service.get_session(
+        app_name="sentinel", user_id=user_id, session_id=session_id
+    )
     if session is None:
-        await session_service.create_session(app_name="sentinel", user_id=user_id, session_id=session_id)
+        await session_service.create_session(
+            app_name="sentinel", user_id=user_id, session_id=session_id
+        )
 
     async def event_generator():
         try:
-            runner = Runner(agent=root_agent, app_name="sentinel", session_service=session_service)
-            new_msg = types.Content(role="user", parts=[types.Part.from_text(text=request.message)])
+            runner = Runner(
+                agent=root_agent, app_name="sentinel", session_service=session_service
+            )
+            new_msg = types.Content(
+                role="user", parts=[types.Part.from_text(text=request.message)]
+            )
 
-            async for event in runner.run_async(user_id=user_id, session_id=session_id, new_message=new_msg):
+            async for event in runner.run_async(
+                user_id=user_id, session_id=session_id, new_message=new_msg
+            ):
                 author = event.author
                 text = ""
                 if event.content and event.content.parts:
@@ -120,7 +141,9 @@ async def chat_stream(request: ChatRequest):
                 # Check for tool/function calls
                 func_calls = []
                 for fc in event.get_function_calls():
-                    func_calls.append({"name": fc.name, "args": dict(fc.args) if fc.args else {}})
+                    func_calls.append(
+                        {"name": fc.name, "args": dict(fc.args) if fc.args else {}}
+                    )
 
                 # Check for tool/function responses
                 func_responses = []
@@ -133,15 +156,21 @@ async def chat_stream(request: ChatRequest):
                     "text": text,
                     "function_calls": func_calls,
                     "function_responses": func_responses,
-                    "is_final": event.is_final_response()
+                    "is_final": event.is_final_response(),
                 }
 
                 yield f"data: {json.dumps(chunk)}\n\n"
         except Exception as e:
-            err_chunk = {"id": "error", "author": "system", "text": f"Error running agent: {e!s}", "is_final": True}
+            err_chunk = {
+                "id": "error",
+                "author": "system",
+                "text": f"Error running agent: {e!s}",
+                "is_final": True,
+            }
             yield f"data: {json.dumps(err_chunk)}\n\n"
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")
+
 
 # Root Endpoint
 @app.get("/")
@@ -149,5 +178,5 @@ async def root():
     return {
         "app": "Sentinel Flood-Watch",
         "description": "Accra urban flooding satellite monitoring AI Agent API.",
-        "status": "online"
+        "status": "online",
     }
