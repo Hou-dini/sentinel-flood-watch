@@ -139,6 +139,13 @@
     - Installed the `arize-ax-cli` tool globally on the local system and configured the active CLI profile using the `PHOENIX_API_KEY` from the environment.
     - Verified the CLI's connectivity to the Arize cloud by querying the space list successfully.
     - Staged, committed, and pushed the telemetry configuration fix to trigger the CI/CD pipeline deployment.
+8. **MongoDB MCPToolset Integration:**
+    - Transitioned the agent's database integration to the official MongoDB MCP server (`@mongodb-js/mongodb-mcp-server`) via Google ADK's `McpToolset` class.
+    - Updated `app/agent.py` to configure the MCP `StdioConnectionParams` using `npx` and forward the `MONGODB_URI` environment variable.
+    - Updated system instructions directing the agent to use its native MongoDB MCP tools to inspect and query collections directly.
+    - Removed the obsolete `search_alerts_tool.py` and cleaned up package exports in `app/tools/__init__.py`.
+    - Updated the `Dockerfile` to install Node.js/npm in the runtime image so that `npx` can successfully launch the MCP server on Cloud Run.
+    - Verified all changes against the unit test suite and pushed them to GitHub, triggering a successful CI/CD deployment.
 
 ### Next Steps
 - Verify end-to-end functionality of the deployed live endpoint.
