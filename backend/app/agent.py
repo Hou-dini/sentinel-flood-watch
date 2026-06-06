@@ -20,16 +20,13 @@ from google.adk.apps import App
 from google.adk.models import Gemini
 from google.genai import types
 
-from mcp import StdioServerParameters
-from google.adk.tools.mcp_tool import McpToolset
-from google.adk.tools.mcp_tool.mcp_session_manager import StdioConnectionParams
-
 # Import our custom tools (excluding search_alerts_tool which is replaced by MongoDB MCP server)
 from app.tools import (
     scan_zone_tool,
     send_alert_tool,
     web_search_tool,
     lookup_coordinates_tool,
+    mongodb_mcp_tool,
 )
 
 # Setup Google Cloud / Vertex AI region and project defaults
@@ -65,17 +62,6 @@ Always convert the changes in indices to percentages while citing the raw index 
 5. If the user asks about past incidents or logged records, query the MongoDB database directly using your MongoDB MCP tools (for example, by finding documents in the 'alerts' collection of the 'sentinel_flood_watch' database).
 6. Present your findings objectively and cite the satellite image evidence.
 """
-
-# Configure MongoDB MCP Toolset
-mongodb_mcp_tool = McpToolset(
-    connection_params=StdioConnectionParams(
-        server_params=StdioServerParameters(
-            command="npx",
-            args=["-y", "@mongodb-js/mongodb-mcp-server"],
-            env={**os.environ, "MONGODB_URI": os.environ.get("MONGODB_URI", "")},
-        )
-    )
-)
 
 root_agent = Agent(
     name="sentinel_flood_watch_agent",
