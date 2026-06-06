@@ -106,6 +106,29 @@
    - Verified that the backend test suites run successfully.
 
 ### Next Steps
-- Push changes to the remote repository.
 - Verify container startup once the Docker service is running on the host system.
+- Deploy the system to Cloud Run and verify GEE/Vertex AI integrations.
+
+---
+
+## Session Date: June 6, 2026
+
+### Activities Completed
+1. **Dynamic GEE Project Resolution for Cloud Run:**
+   - Updated the Earth Engine initialization in `app/tools/common.py` to dynamically resolve the active GCP Project ID using `google.auth.default()` when `GOOGLE_CLOUD_PROJECT` is absent. This passes the required project context to `ee.Initialize(project=project)` to ensure Application Default Credentials (ADC) work on Cloud Run.
+2. **MongoDB Database ObjectId Casting:**
+   - Resolved a JSON serialization crash on alert saving by converting MongoDB `ObjectId` fields to string parameters inside `app/database.py` during database insertion.
+3. **Vertex AI Model Migration:**
+   - Migrated the agent's LLM model from the retired/inaccessible `gemini-3-flash-preview` to **`gemini-3.5-flash`** in `app/agent.py` and evaluation configurations (`tests/eval/eval_config.json`), resolving prediction 403 API errors on Vertex AI.
+   - Aligned all documentation, HTML flowchart diagrams, and specifications with the new model name.
+4. **Workload Identity Federation (WIF) setup:**
+   - Configured WIF resources (Workload Identity Pool `github-pool` and OIDC Provider `github-provider`) on Google Cloud, binding the GitHub repository `Hou-dini/sentinel-flood-watch` to the deployment service account.
+   - Enforced OIDC attribute condition checking (`assertion.repository == 'Hou-dini/sentinel-flood-watch'`) to comply with GCP Organization Policy constraints.
+   - Registered `GCP_WIF_PROVIDER` and `GCP_WIF_SERVICE_ACCOUNT` secrets directly to the GitHub repository using the GitHub CLI (`gh`).
+5. **WIF Developer Skill Contribution:**
+   - Created a custom reusable agent skill named `gcp-wif-github-setup` with permissive open-source metadata (`license: "Apache-2.0"` and `author: "Elikplim Kudowor (Hou-dini)"`), and copied it to the workspace's `skills/` folder to be tracked in version control.
+
+### Next Steps
+- Use the `gh` CLI to investigate the latest CI/CD deployment run status and resolve any build pipeline failures.
+- Verify end-to-end functionality of the deployed live endpoint.
 
