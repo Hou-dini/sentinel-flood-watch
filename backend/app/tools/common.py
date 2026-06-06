@@ -39,7 +39,20 @@ def init_earth_engine() -> bool:
                 return True
         # Try to initialize with default credentials
         logging.info("Initializing Earth Engine with default credentials...")
-        ee.Initialize()
+        project = os.environ.get("GOOGLE_CLOUD_PROJECT")
+        if not project:
+            try:
+                import google.auth
+                _, project = google.auth.default()
+                logging.info(f"Retrieved project from google.auth: {project}")
+            except Exception as auth_err:
+                logging.warning(f"Could not retrieve project from google.auth: {auth_err}")
+        if project:
+            logging.info(f"Initializing Earth Engine with project: {project}")
+            ee.Initialize(project=project)
+        else:
+            logging.info("Initializing Earth Engine without explicit project...")
+            ee.Initialize()
         _ee_initialized = True
         logging.info("Google Earth Engine initialized successfully.")
         return True
