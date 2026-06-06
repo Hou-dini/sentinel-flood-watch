@@ -42,7 +42,7 @@ A **Vanilla HTML/CSS/JS web dashboard** provides:
 
 ## 2. Tech Stack
 - **AI Agent Framework:** Google ADK (Agent Development Kit)
-- **AI Model:** Gemini 3 Flash (`gemini-3-flash-preview`)
+- **AI Model:** Gemini 3.5 Flash (`gemini-3.5-flash`)
 - **Backend Server:** FastAPI / Uvicorn (Python 3.11)
 - **Data Source:** Google Earth Engine (Sentinel-2 Harmonized Surface Reflectance: `COPERNICUS/S2_SR_HARMONIZED`)
 - **Database:** MongoDB Atlas or local persistent `mongo:6.0` service (fallback to local `alerts_db.json`)

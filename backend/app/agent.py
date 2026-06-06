@@ -66,7 +66,7 @@ Always convert the changes in indices to percentages while citing the raw index 
 root_agent = Agent(
     name="sentinel_flood_watch_agent",
     model=Gemini(
-        model="gemini-3-flash-preview",
+        model="gemini-3.5-flash",
         retry_options=types.HttpRetryOptions(attempts=3),
     ),
     instruction=INSTRUCTIONS,
