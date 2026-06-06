@@ -26,8 +26,7 @@ This document defines core software engineering principles, coding practices, an
 ## 3. Continuous Integration & Continuous Delivery (CI/CD)
 - **Local Testing First:** Use pytest for unit tests and local `adk eval` runs for LLM evaluation before pushing changes.
 - **Automated DevOps (GitHub Actions):** 
-  - Automate linters (`ruff check .`) and type checks (`ty`) to enforce code formatting and catch static analysis bugs before merging.
-  - **Environment-Safe Tests:** Configure runners to execute only unit tests (`tests/unit/`) under mock conditions. Avoid running cloud-dependent integration tests on public runners where service account keys cannot be safely stored.
+  - **Environment-Safe Tests & WIF:** Configure runners to execute only unit tests (`tests/unit/`) under mock conditions. For Google Cloud deployments, use Workload Identity Federation (WIF) via the `id-token` OIDC handshake instead of storing static service account key JSON secrets in GitHub.
   - **Dependency Caching:** Use cached execution runners (such as caching the `uv` package manager and `.venv` builds) to reduce pipeline runtime.
 - **Immutable Infrastructure:** Define deployment environments using Terraform to guarantee consistency between staging and production instances on Vertex AI Agent Engine.
 
