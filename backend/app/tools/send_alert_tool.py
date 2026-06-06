@@ -22,7 +22,7 @@ async def send_alert_tool(latitude: float, longitude: float, site_name: str, age
     logging.info(f"Dispatching Alert for '{site_name}' [{severity} severity]...")
 
     # Save to database
-    evidence_url = f"/static/mock_{site_name.lower().replace(' ', '_')}_current_rgb.png"
+    evidence_url = f"/static/mock_{site_name.lower().replace(' ', '_').replace('/', '_')}_current_rgb.png"
     if tool_context and "last_scan" in tool_context.state:
         last_scan = tool_context.state["last_scan"]
         if last_scan.get("site_name") == site_name:

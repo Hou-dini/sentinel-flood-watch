@@ -236,12 +236,12 @@ function selectAlert(alertId) {
     // Simulate/Load the scans
     loadScanResults({
         site_name: alert.site_name,
-        baseline_rgb: `/static/mock_${alert.site_name.toLowerCase().replace(/ /g, '_')}_baseline_rgb.png`,
+        baseline_rgb: `/static/mock_${alert.site_name.toLowerCase().replace(/ /g, '_').replace(/\//g, '_')}_baseline_rgb.png`,
         current_rgb: alert.evidence_link,
-        baseline_ndvi: `/static/mock_${alert.site_name.toLowerCase().replace(/ /g, '_')}_baseline_ndvi.png`,
-        current_ndvi: `/static/mock_${alert.site_name.toLowerCase().replace(/ /g, '_')}_current_ndvi.png`,
-        baseline_mndwi: `/static/mock_${alert.site_name.toLowerCase().replace(/ /g, '_')}_baseline_mndwi.png`,
-        current_mndwi: `/static/mock_${alert.site_name.toLowerCase().replace(/ /g, '_')}_current_mndwi.png`,
+        baseline_ndvi: `/static/mock_${alert.site_name.toLowerCase().replace(/ /g, '_').replace(/\//g, '_')}_baseline_ndvi.png`,
+        current_ndvi: `/static/mock_${alert.site_name.toLowerCase().replace(/ /g, '_').replace(/\//g, '_')}_current_ndvi.png`,
+        baseline_mndwi: `/static/mock_${alert.site_name.toLowerCase().replace(/ /g, '_').replace(/\//g, '_')}_baseline_mndwi.png`,
+        current_mndwi: `/static/mock_${alert.site_name.toLowerCase().replace(/ /g, '_').replace(/\//g, '_')}_current_mndwi.png`,
     });
 }
 
@@ -391,16 +391,22 @@ async function executeAgentChat(messageText) {
         
         let agentText = "";
         let bubbleElement = null;
+        let buffer = ""; // Store incomplete data across reads
 
         while (true) {
             const { value, done } = await reader.read();
             if (done) break;
 
-            const chunkStr = decoder.decode(value);
-            // Process lines (can contain multiple SSE events)
-            const lines = chunkStr.split("\n\n");
+            buffer += decoder.decode(value, { stream: true });
             
-            for (const line of lines) {
+            // Split by double newline (standard SSE event delimiter)
+            const parts = buffer.split("\n\n");
+            
+            // The last part is either incomplete or an empty string after the trailing \n\n
+            buffer = parts.pop();
+            
+            for (const part of parts) {
+                const line = part.trim();
                 if (line.startsWith("data: ")) {
                     const dataJson = JSON.parse(line.substring(6));
                     
@@ -413,12 +419,12 @@ async function executeAgentChat(messageText) {
                             if (fc.name === "scan_zone_tool") {
                                 loadScanResults({
                                     site_name: fc.args.site_name || "Target Site",
-                                    baseline_rgb: `/static/mock_${(fc.args.site_name || 'site').toLowerCase().replace(/ /g, '_')}_baseline_rgb.png`,
-                                    current_rgb: `/static/mock_${(fc.args.site_name || 'site').toLowerCase().replace(/ /g, '_')}_current_rgb.png`,
-                                    baseline_ndvi: `/static/mock_${(fc.args.site_name || 'site').toLowerCase().replace(/ /g, '_')}_baseline_ndvi.png`,
-                                    current_ndvi: `/static/mock_${(fc.args.site_name || 'site').toLowerCase().replace(/ /g, '_')}_current_ndvi.png`,
-                                    baseline_mndwi: `/static/mock_${(fc.args.site_name || 'site').toLowerCase().replace(/ /g, '_')}_baseline_mndwi.png`,
-                                    current_mndwi: `/static/mock_${(fc.args.site_name || 'site').toLowerCase().replace(/ /g, '_')}_current_mndwi.png`,
+                                    baseline_rgb: `/static/mock_${(fc.args.site_name || 'site').toLowerCase().replace(/ /g, '_').replace(/\//g, '_')}_baseline_rgb.png`,
+                                    current_rgb: `/static/mock_${(fc.args.site_name || 'site').toLowerCase().replace(/ /g, '_').replace(/\//g, '_')}_current_rgb.png`,
+                                    baseline_ndvi: `/static/mock_${(fc.args.site_name || 'site').toLowerCase().replace(/ /g, '_').replace(/\//g, '_')}_baseline_ndvi.png`,
+                                    current_ndvi: `/static/mock_${(fc.args.site_name || 'site').toLowerCase().replace(/ /g, '_').replace(/\//g, '_')}_current_ndvi.png`,
+                                    baseline_mndwi: `/static/mock_${(fc.args.site_name || 'site').toLowerCase().replace(/ /g, '_').replace(/\//g, '_')}_baseline_mndwi.png`,
+                                    current_mndwi: `/static/mock_${(fc.args.site_name || 'site').toLowerCase().replace(/ /g, '_').replace(/\//g, '_')}_current_mndwi.png`,
                                 });
                             }
                         });

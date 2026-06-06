@@ -68,7 +68,7 @@ def generate_mock_satellite_images(site_name: str, has_encroachment: bool = True
       - Baseline NDVI, Current NDVI
       - Baseline MNDWI, Current MNDWI
     """
-    site_key = site_name.lower().replace(" ", "_")
+    site_key = site_name.lower().replace(" ", "_").replace("/", "_")
 
     # Filenames
     filenames = {
