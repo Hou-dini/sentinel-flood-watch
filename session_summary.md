@@ -156,6 +156,11 @@
     - Updated `app/database.py` to act as a backward-compatible wrapper that delegates calls to a singleton `db_service = DatabaseService()` instance.
     - Created a new test suite in `tests/unit/test_database_service.py` to cover both the local JSON fallback flow and the mocked MongoDB database connection/operations flow.
     - Ran local pytest validation successfully and verified the automated CI/CD pipeline built and deployed the changes to Cloud Run.
+11. **MCP Tool Refactoring and Separation:**
+    - Migrated the `mongodb_mcp_tool` configuration code out of `app/agent.py` into a dedicated package `app/tools/mcp`.
+    - Created `app/tools/mcp/mongodb_mcp_tool.py` and exported it via `app/tools/mcp/__init__.py`.
+    - Updated the main `app/tools/__init__.py` module to import and expose `mongodb_mcp_tool` uniformly alongside other system tools.
+    - Simplified `app/agent.py` to import `mongodb_mcp_tool` cleanly from `app.tools`, preserving all functionality while reducing code clutter in the agent definition.
 
 ### Next Steps
 - Verify end-to-end functionality of the deployed live endpoint.
