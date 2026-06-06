@@ -134,6 +134,11 @@
     - Ran unit tests and Ruff linter/formatter on the backend to ensure code quality and compliance.
     - Staged, committed, and pushed the changes to the remote repository.
     - Monitored the GitHub Actions CI/CD pipeline which successfully built and deployed the updated app to Cloud Run.
+7. **Arize Phoenix Telemetry Connection and CLI setup:**
+    - Resolved the Arize trace export issue on Cloud Run by removing a fragile urllib startup GET request validation check in `app/app_utils/telemetry.py` that incorrectly caused the system to fall back to the local collector.
+    - Installed the `arize-ax-cli` tool globally on the local system and configured the active CLI profile using the `PHOENIX_API_KEY` from the environment.
+    - Verified the CLI's connectivity to the Arize cloud by querying the space list successfully.
+    - Staged, committed, and pushed the telemetry configuration fix to trigger the CI/CD pipeline deployment.
 
 ### Next Steps
 - Verify end-to-end functionality of the deployed live endpoint.
