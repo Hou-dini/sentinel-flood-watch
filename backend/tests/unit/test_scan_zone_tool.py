@@ -17,26 +17,24 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from app.services.gee_service import EarthEngineService
 from app.tools.scan_zone_tool import scan_zone_tool
 
 
 @pytest.mark.asyncio
-async def test_scan_zone_tool_date_calculation() -> None:
-    """
-    Test that scan_zone_tool dynamically calculates the correct dates
+async def test_gee_service_date_calculation() -> None:
+    """Test that EarthEngineService dynamically calculates the correct dates
+
     for current and baseline imagery collections.
     """
-    # Mock date to be a fixed date (2026-06-06)
+    service = EarthEngineService()
     fixed_date = datetime.date(2026, 6, 6)
 
-    # Calculate expected dates based on fixed date
-    # Current: last 540 days ending today
+    # Expected dates
     expected_current_end = "2026-06-06"
     expected_current_start = (fixed_date - datetime.timedelta(days=540)).strftime(
         "%Y-%m-%d"
     )
-
-    # Baseline: same duration offset by 5 years (1826 days)
     expected_baseline_end = (fixed_date - datetime.timedelta(days=1826)).strftime(
         "%Y-%m-%d"
     )
@@ -44,7 +42,22 @@ async def test_scan_zone_tool_date_calculation() -> None:
         fixed_date - datetime.timedelta(days=1826 + 540)
     ).strftime("%Y-%m-%d")
 
-    # Create mock Earth Engine objects
+    with patch("datetime.date") as mock_date:
+        mock_date.today.return_value = fixed_date
+        mock_date.side_effect = lambda *args, **kwargs: datetime.date(*args, **kwargs)
+
+        dates = service.get_dynamic_dates()
+        assert dates["current_start"] == expected_current_start
+        assert dates["current_end"] == expected_current_end
+        assert dates["baseline_start"] == expected_baseline_start
+        assert dates["baseline_end"] == expected_baseline_end
+
+
+@pytest.mark.asyncio
+async def test_gee_service_fetch_scan_metrics() -> None:
+    """Test that EarthEngineService correctly filters collections and calls GEE."""
+    service = EarthEngineService()
+
     mock_ee = MagicMock()
     mock_point = MagicMock()
     mock_region = MagicMock()
@@ -54,26 +67,33 @@ async def test_scan_zone_tool_date_calculation() -> None:
     mock_point.buffer.return_value.bounds.return_value = mock_region
     mock_ee.ImageCollection.return_value = mock_collection
 
-    # Setup the collection chains to return a mock collection
     mock_collection.filterBounds.return_value = mock_collection
     mock_collection.filterDate.return_value = mock_collection
     mock_collection.filter.return_value = mock_collection
     mock_collection.sort.return_value = mock_collection
-
-    # We mock the .size().getInfo() to return 0 so it falls back to mock generator
-    # without failing on getThumbURL etc.
     mock_collection.size.return_value.getInfo.return_value = 0
 
     with (
-        patch("app.tools.scan_zone_tool.init_earth_engine", return_value=True),
-        patch("app.tools.scan_zone_tool.save_scan", return_value=None),
-        patch("app.tools.scan_zone_tool.generate_mock_satellite_images") as mock_gen,
-        patch("datetime.date") as mock_date,
+        patch("app.services.gee_service.init_earth_engine", return_value=True),
         patch("sys.modules", {"ee": mock_ee}),
     ):
-        mock_date.today.return_value = fixed_date
-        # Match datetime.date class behavior for subtraction/etc.
-        mock_date.side_effect = lambda *args, **kwargs: datetime.date(*args, **kwargs)
+        service.initialize()
+        result = service.fetch_scan_metrics(latitude=5.55, longitude=-0.2167)
+        assert result is None  # Since collection size is 0, it returns None
+
+        # Verify correct filterDate calls
+        filter_date_calls = mock_collection.filterDate.call_args_list
+        assert len(filter_date_calls) == 2
+
+
+@pytest.mark.asyncio
+async def test_scan_zone_tool_fallback() -> None:
+    """Test that scan_zone_tool falls back to mock imagery if GEE fails."""
+    with (
+        patch("app.tools.scan_zone_tool.save_scan", return_value=None),
+        patch("app.tools.scan_zone_tool.generate_mock_satellite_images") as mock_gen,
+        patch("app.services.gee_service.init_earth_engine", return_value=False),
+    ):
         mock_gen.return_value = {
             "baseline_rgb": "/static/mock_base_rgb.png",
             "current_rgb": "/static/mock_curr_rgb.png",
@@ -88,15 +108,6 @@ async def test_scan_zone_tool_date_calculation() -> None:
         )
 
         assert result["status"] == "success"
-
-        # Verify correct filterDate arguments were passed
-        filter_date_calls = mock_collection.filterDate.call_args_list
-        assert len(filter_date_calls) == 2
-
-        # The first call should be for baseline: baseline_start to baseline_end
-        first_call_args = filter_date_calls[0][0]
-        assert first_call_args == (expected_baseline_start, expected_baseline_end)
-
-        # The second call should be for current: current_start to current_end
-        second_call_args = filter_date_calls[1][0]
-        assert second_call_args == (expected_current_start, expected_current_end)
+        assert result["anomaly_detected"] is True
+        assert "baseline_rgb" in result
+        mock_gen.assert_called_once_with("Odaw River Basin", has_encroachment=True)

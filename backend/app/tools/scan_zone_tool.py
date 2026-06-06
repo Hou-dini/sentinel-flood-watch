@@ -1,10 +1,25 @@
+# Copyright 2026 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import datetime
 import logging
 
 from google.adk.tools.tool_context import ToolContext
 
 from app.database import save_scan
-from app.tools.common import generate_mock_satellite_images, init_earth_engine
+from app.services import EarthEngineService
+from app.tools.common import generate_mock_satellite_images
 
 
 async def scan_zone_tool(
@@ -21,191 +36,68 @@ async def scan_zone_tool(
     Args:
         latitude: Latitude coordinate of the monitoring target.
         longitude: Longitude coordinate of the monitoring target.
-        site_name: Name of the ecological site (e.g. "Sakumonor Ramsar Site").
+        site_name: Name of the ecological site (e.g. "Sakumono Ramsar Site").
 
     Returns:
         A dictionary with image URLs (RGB, NDVI, MNDWI) and an anomaly evaluation.
     """
     logging.info(f"Scanning target '{site_name}' at [{latitude}, {longitude}]...")
 
-    # Try to initialize Earth Engine, otherwise fallback to mock
-    gee_success = init_earth_engine()
+    gee_service = EarthEngineService()
+    gee_success = gee_service.initialize()
 
     urls = None
     has_anomaly = False
     evidence_summary = ""
 
     if gee_success:
-        try:
-            import ee
+        result_data = gee_service.fetch_scan_metrics(latitude, longitude)
+        if result_data:
+            urls = result_data["urls"]
+            stats = result_data["stats"]
 
-            logging.info(
-                "Earth Engine pipeline active, querying Sentinel-2 Harmonized collection..."
-            )
-            point = ee.Geometry.Point([longitude, latitude])
-            region = point.buffer(1200).bounds()
+            base_mean_ndvi = stats["base_mean_ndvi"]
+            curr_mean_ndvi = stats["curr_mean_ndvi"]
+            base_mean_mndwi = stats["base_mean_mndwi"]
+            curr_mean_mndwi = stats["curr_mean_mndwi"]
 
-            s2 = ee.ImageCollection("COPERNICUS/S2_SR_HARMONIZED")
+            if all(
+                x is not None
+                for x in [
+                    base_mean_ndvi,
+                    curr_mean_ndvi,
+                    base_mean_mndwi,
+                    curr_mean_mndwi,
+                ]
+            ):
+                ndvi_diff = base_mean_ndvi - curr_mean_ndvi
+                mndwi_diff = base_mean_mndwi - curr_mean_mndwi
 
-            # Calculate dynamic date windows
-            today = datetime.date.today()
-
-            # Current: last 540 days ending today
-            current_end = today.strftime("%Y-%m-%d")
-            current_start = (today - datetime.timedelta(days=540)).strftime("%Y-%m-%d")
-
-            # Baseline: same duration offset by exactly 5 years (1826 days to account for leap years)
-            baseline_end = (today - datetime.timedelta(days=1826)).strftime("%Y-%m-%d")
-            baseline_start = (today - datetime.timedelta(days=1826 + 540)).strftime(
-                "%Y-%m-%d"
-            )
-
-            logging.info(
-                f"Filtering Sentinel-2 imagery - Baseline: {baseline_start} to {baseline_end} | Current: {current_start} to {current_end}"
-            )
-
-            # Baseline Collection
-            baseline_col = (
-                s2.filterBounds(point)
-                .filterDate(baseline_start, baseline_end)
-                .filter(ee.Filter.lt("CLOUDY_PIXEL_PERCENTAGE", 20))
-                .sort("CLOUDY_PIXEL_PERCENTAGE")
-            )
-
-            # Current Collection
-            current_col = (
-                s2.filterBounds(point)
-                .filterDate(current_start, current_end)
-                .filter(ee.Filter.lt("CLOUDY_PIXEL_PERCENTAGE", 20))
-                .sort("CLOUDY_PIXEL_PERCENTAGE")
-            )
-
-            if baseline_col.size().getInfo() > 0 and current_col.size().getInfo() > 0:
-                base_img = ee.Image(baseline_col.first())
-                curr_img = ee.Image(current_col.first())
-
-                # Visual parameters for RGB
-                rgb_params = {
-                    "bands": ["B4", "B3", "B2"],
-                    "min": 0,
-                    "max": 3000,
-                    "region": region,
-                    "dimensions": 400,
-                    "format": "png",
-                }
-
-                # Compute NDVI
-                base_ndvi = base_img.normalizedDifference(["B8", "B4"]).rename("NDVI")
-                curr_ndvi = curr_img.normalizedDifference(["B8", "B4"]).rename("NDVI")
-                ndvi_params = {
-                    "min": -0.1,
-                    "max": 0.8,
-                    "palette": ["red", "yellow", "green"],
-                    "region": region,
-                    "dimensions": 400,
-                    "format": "png",
-                }
-
-                # Compute MNDWI
-                base_mndwi = base_img.normalizedDifference(["B3", "B11"]).rename(
-                    "MNDWI"
-                )
-                curr_mndwi = curr_img.normalizedDifference(["B3", "B11"]).rename(
-                    "MNDWI"
-                )
-                mndwi_params = {
-                    "min": -0.2,
-                    "max": 0.6,
-                    "palette": ["black", "blue", "cyan"],
-                    "region": region,
-                    "dimensions": 400,
-                    "format": "png",
-                }
-
-                # Retrieve URL links
-                urls = {
-                    "baseline_rgb": base_img.getThumbURL(rgb_params),
-                    "current_rgb": curr_img.getThumbURL(rgb_params),
-                    "baseline_ndvi": base_ndvi.getThumbURL(ndvi_params),
-                    "current_ndvi": curr_ndvi.getThumbURL(ndvi_params),
-                    "baseline_mndwi": base_mndwi.getThumbURL(mndwi_params),
-                    "current_mndwi": curr_mndwi.getThumbURL(mndwi_params),
-                }
-
-                # Calculate mean metrics inside region to detect real anomaly
-                try:
-                    base_mean_ndvi = (
-                        base_ndvi.reduceRegion(
-                            reducer=ee.Reducer.mean(), geometry=region, scale=30
-                        )
-                        .get("NDVI")
-                        .getInfo()
-                    )
-                    curr_mean_ndvi = (
-                        curr_ndvi.reduceRegion(
-                            reducer=ee.Reducer.mean(), geometry=region, scale=30
-                        )
-                        .get("NDVI")
-                        .getInfo()
-                    )
-                    base_mean_mndwi = (
-                        base_mndwi.reduceRegion(
-                            reducer=ee.Reducer.mean(), geometry=region, scale=30
-                        )
-                        .get("MNDWI")
-                        .getInfo()
-                    )
-                    curr_mean_mndwi = (
-                        curr_mndwi.reduceRegion(
-                            reducer=ee.Reducer.mean(), geometry=region, scale=30
-                        )
-                        .get("MNDWI")
-                        .getInfo()
-                    )
-
-                    if all(
-                        x is not None
-                        for x in [
-                            base_mean_ndvi,
-                            curr_mean_ndvi,
-                            base_mean_mndwi,
-                            curr_mean_mndwi,
-                        ]
-                    ):
-                        ndvi_diff = base_mean_ndvi - curr_mean_ndvi
-                        mndwi_diff = base_mean_mndwi - curr_mean_mndwi
-
-                        # Detect significant change (vegetation loss or water loss)
-                        if ndvi_diff > 0.02 or mndwi_diff > 0.02:
-                            has_anomaly = True
-
-                        evidence_summary = (
-                            f"Live Earth Engine analysis completed for {site_name}. "
-                            f"NDVI changed by {ndvi_diff * 100:+.1f}% (from {base_mean_ndvi:.3f} to {curr_mean_ndvi:.3f}), indicating vegetation changes. "
-                            f"MNDWI changed by {mndwi_diff * 100:+.1f}% (from {base_mean_mndwi:.3f} to {curr_mean_mndwi:.3f}), indicating water channel alterations."
-                        )
-                    else:
-                        has_anomaly = True
-                        evidence_summary = f"Sentinel-2 scans processed for {site_name}. Visible alterations detected in vegetation cover and water channels."
-                except Exception as ex:
-                    logging.warning(f"Failed to calculate GEE stats: {ex}")
+                # Detect significant change (vegetation loss or water loss > 2%)
+                if ndvi_diff > 0.02 or mndwi_diff > 0.02:
                     has_anomaly = True
-                    evidence_summary = f"Sentinel-2 scans processed for {site_name}. Visual anomalies and structural clearing detected in the buffer zone."
-            else:
-                logging.warning(
-                    "Not enough clear Sentinel-2 imagery found in selected date bounds. Falling back to mock imagery."
+
+                evidence_summary = (
+                    f"Live Earth Engine analysis completed for {site_name}. "
+                    f"NDVI changed by {ndvi_diff * 100:+.1f}% (from {base_mean_ndvi:.3f} to {curr_mean_ndvi:.3f}), indicating vegetation changes. "
+                    f"MNDWI changed by {mndwi_diff * 100:+.1f}% (from {base_mean_mndwi:.3f} to {curr_mean_mndwi:.3f}), indicating water channel alterations."
                 )
-        except Exception as e:
-            logging.error(
-                f"Error in Earth Engine image compilation: {e}. Falling back to mock renderer."
-            )
+            else:
+                has_anomaly = True
+                evidence_summary = (
+                    f"Sentinel-2 scans processed for {site_name}. "
+                    f"Visible alterations detected in vegetation cover and water channels."
+                )
 
     # Fallback to Mock Generator
     if not urls:
         logging.info("Using mock renderer fallback.")
         has_anomaly = True
         urls = generate_mock_satellite_images(site_name, has_encroachment=has_anomaly)
-        evidence_summary = f"Mock analysis: Detected building structures and waste dumping in the buffer zone of {site_name}. MNDWI shows water channel narrowing by 20%. NDVI shows vegetation loss of 15%."
+        evidence_summary = (
+            f"Mock analysis: Detected building structures and waste dumping in the buffer zone of {site_name}. "
+            f"MNDWI shows water channel narrowing by 20%. NDVI shows vegetation loss of 15%."
+        )
 
     # Compile response
     result = {
