@@ -44,3 +44,13 @@ This document captures engineering lessons, technical challenges, options consid
 * **Problem:** Standard `pip install` in Docker builds is slow and produces bloated images containing compilers and build caches.
 * **Solution:** Implemented a multi-stage Dockerfile using `uv`. The builder stage syncs dependencies in a virtual environment (`.venv`), which is then copied to a slim final runtime stage. This results in fast, cached builds and a minimal container footprint.
 
+## 11. `arize-phoenix-otel` vs `arize-otel` — Wrong SDK for Cloud Tracing
+* **Problem:** The backend was using `phoenix.otel.register()` from the `arize-phoenix-otel` package but pointing at the Arize cloud endpoint (`app.phoenix.arize.com`). This produced persistent `HTTP 401 Unauthorized` errors in Cloud Run logs on every span batch export.
+* **Root Cause:** `arize-phoenix-otel` is the **Phoenix OSS SDK** — it is designed for self-hosted Phoenix instances and does **not** inject authentication headers into OTLP export requests. When targeting Arize cloud, it sends unauthenticated requests, which are rejected with 401.
+* **Solution:** Replace `arize-phoenix-otel` with `arize-otel` and switch the call from `phoenix.otel.register()` to `arize.otel.register(space_id=..., api_key=..., project_name=...)`. The `arize-otel` SDK correctly injects `space_id` and `api_key` as OTLP request headers. Environment variables also change: `PHOENIX_API_KEY` + `PHOENIX_COLLECTOR_ENDPOINT` → `ARIZE_SPACE_ID` + `ARIZE_API_KEY`.
+* **What to Avoid:** Do not assume that because both packages share the `arize.com` brand they are interchangeable. `arize-phoenix-otel` is for local/self-hosted Phoenix; `arize-otel` is for Arize cloud. Always verify the target endpoint against the SDK being used.
+
+## 12. `SimpleSpanProcessor` vs `BatchSpanProcessor` in Production
+* **Problem:** The Phoenix OSS `register()` function defaults to a `SimpleSpanProcessor`, which exports spans synchronously on every LLM call. In production (Cloud Run), this adds latency to every request and generates warning logs: *"It is strongly advised to use a BatchSpanProcessor in production environments."*
+* **Solution:** `arize.otel.register()` uses a `BatchSpanProcessor` by default, which queues spans and exports them asynchronously in batches — the correct behaviour for production workloads. No extra configuration is needed; switching to `arize-otel` resolves this automatically.
+* **What to Avoid:** Never use `SimpleSpanProcessor` in production services with high request volume. It introduces synchronous I/O on the hot request path and will cause latency spikes under load.

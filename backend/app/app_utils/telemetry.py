@@ -52,34 +52,35 @@ def setup_telemetry() -> str | None:
 
     # 2. Arize Phoenix OpenTelemetry Tracing
     try:
+        from arize.otel import register
         from openinference.instrumentation.google_adk import GoogleADKInstrumentor
-        from phoenix.otel import register
 
-        # Phoenix project configuration
+        # Arize cloud credentials — must be set as environment variables.
+        # Retrieve your Space ID and API Key from:
+        # https://app.arize.com/organizations/-/settings/space-api-keys
+        space_id = os.environ.get("ARIZE_SPACE_ID", "").strip()
+        api_key = os.environ.get("ARIZE_API_KEY", "").strip()
         project = os.environ.get("PHOENIX_PROJECT_NAME", "sentinel-flood-watch")
 
-        # Avoid OTLP 401 Unauthorized errors by falling back if credentials are missing
-        endpoint = os.environ.get("PHOENIX_COLLECTOR_ENDPOINT", "").rstrip("/")
-        api_key = os.environ.get("PHOENIX_API_KEY", "").strip()
+        if not space_id or not api_key:
+            logging.warning(
+                "Arize tracing disabled: ARIZE_SPACE_ID and/or ARIZE_API_KEY are not set. "
+                "Set them to enable trace export to Arize cloud."
+            )
+        else:
+            # arize.otel.register() correctly:
+            #   - injects space_id + api_key as OTLP request headers (fixes 401)
+            #   - uses a BatchSpanProcessor by default (fixes production warning)
+            tracer_provider = register(
+                space_id=space_id,
+                api_key=api_key,
+                project_name=project,
+            )
 
-        if (
-            endpoint.startswith("https://app.phoenix.arize.com")
-            or "phoenix.arize.com" in endpoint
-        ):
-            if not api_key or "your_" in api_key:
-                logging.info(
-                    "Arize Phoenix API key is missing or placeholder. Falling back to local collector to avoid 401 unauthorized errors."
-                )
-                os.environ.pop("PHOENIX_COLLECTOR_ENDPOINT", None)
-                os.environ.pop("PHOENIX_API_KEY", None)
-
-        # Initialize tracer provider
-        tracer_provider = register(project_name=project, auto_instrument=True)
-
-        # Instrument ADK
-        GoogleADKInstrumentor().instrument(tracer_provider=tracer_provider)
-        logging.info("Arize Phoenix OpenTelemetry tracing initialized successfully.")
+            # Instrument Google ADK so all agent runs emit spans
+            GoogleADKInstrumentor().instrument(tracer_provider=tracer_provider)
+            logging.info("Arize OpenTelemetry tracing initialized successfully.")
     except Exception as ex:
-        logging.warning(f"Could not initialize Arize Phoenix tracing: {ex}")
+        logging.warning(f"Could not initialize Arize tracing: {ex}")
 
     return bucket
