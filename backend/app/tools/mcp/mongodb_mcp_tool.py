@@ -28,7 +28,7 @@ from mcp import StdioServerParameters
 is_production = os.environ.get("GOOGLE_CLOUD_PROJECT") is not None or os.name != "nt"
 
 command = "mongodb-mcp-server" if is_production else "npx"
-args = [] if is_production else ["-y", "@mongodb-js/mongodb-mcp-server"]
+args = [] if is_production else ["-y", "mongodb-mcp-server"]
 
 # Configure MongoDB MCP Toolset
 mongodb_mcp_tool = McpToolset(
