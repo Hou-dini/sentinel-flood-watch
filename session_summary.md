@@ -173,7 +173,13 @@
     - Directed the root agent to structure encroachment findings into a JSON object matching the `Alert` schema, write it directly to MongoDB using the native `mongodb_insert_one` MCP tool, and then pass the resulting `inserted_id` to `send_alert_tool`.
     - Avoided any sub-agent overhead or complexity, keeping the entire workflow managed by the single root agent.
     - Created the `sentinel-alert-builder` prompt template in the Arize Prompt Hub under `elikplim Space` using the Arize CLI, and verified its template message configuration.
-
+14. **AgentService Orchestrator, Prompt Security boundaries, and Lifespan Configuration:**
+    - Created [agent_service.py](file:///C:/Users/Elikplim/VS%20Code%20Projects/sentinel_flood_watch/backend/app/services/agent_service.py) under the `services` package to encapsulate agent task execution, session setup, and output stream formatting.
+    - Fortified the agent against prompt injection attacks by wrapping user input inside strict XML boundary markers (`<user_input>... </user_input>`) before building the `types.Content` request.
+    - Implemented a FastAPI `lifespan(app: FastAPI)` handler in [main.py](file:///C:/Users/Elikplim/VS%20Code%20Projects/sentinel_flood_watch/backend/app/main.py) to manage telemetry setup and asynchronously initialize the ADK `Runner` and `InMemorySessionService`.
+    - Attached the `Runner` instance to the FastAPI `app.state` to enable dynamic dependency injection into services like `AgentService` in API routes.
+    - Created [test_agent_service.py](file:///C:/Users/Elikplim/VS%20Code%20Projects/sentinel_flood_watch/backend/tests/unit/test_agent_service.py) to verify session orchestration, security formatting, and message stream decoding.
 
 ### Next Steps
 - Verify end-to-end functionality of the deployed live endpoint.
+

@@ -4,8 +4,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 import json
+from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
@@ -13,23 +14,41 @@ from fastapi.staticfiles import StaticFiles
 # Import ADK primitives
 from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
-from google.genai import types
 from pydantic import BaseModel
 
 # Import our agent, tools and database functions
 from app.agent import root_agent
 from app.app_utils.telemetry import setup_telemetry
 from app.database import get_alerts, get_analytics_summary
+from app.services import AgentService
 from app.tools import STATIC_DIR, scan_zone_tool
 
-# Initialize Telemetry (Arize Phoenix & GCP Agent Engine)
-setup_telemetry()
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Initialize Telemetry (Arize Phoenix & GCP Agent Engine)
+    setup_telemetry()
+
+    # Initialize the ADK memory and session services and the Runner object
+    session_service = InMemorySessionService()
+    runner = Runner(
+        agent=root_agent,
+        app_name="sentinel",
+        session_service=session_service,
+    )
+
+    # Add the Runner as a state variable to the FastAPI app
+    app.state.runner = runner
+
+    yield
+
 
 # FastAPI Setup
 app = FastAPI(
     title="Sentinel Flood-Watch API",
     description="Agentic monitoring and alert API for Accra flood zones.",
     version="1.0.0",
+    lifespan=lifespan,
 )
 
 # CORS Setup for local dashboard communication
@@ -40,9 +59,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# Session Service
-session_service = InMemorySessionService()
 
 # Mount Static Files (serves PIL-generated mock images and evidence links)
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
@@ -107,58 +123,18 @@ async def scan_zone(request: ScanRequest):
 
 
 @app.post("/api/v1/chat")
-async def chat_stream(request: ChatRequest):
+async def chat_stream(request: ChatRequest, fastapi_request: Request):
     """Streams the ADK AI Agent's reasoning, tool executions, and final replies using SSE."""
     session_id = request.session_id or "default_session"
     user_id = request.user_id or "default_user"
-
-    # Ensure session exists in the service
-    session = await session_service.get_session(
-        app_name="sentinel", user_id=user_id, session_id=session_id
-    )
-    if session is None:
-        await session_service.create_session(
-            app_name="sentinel", user_id=user_id, session_id=session_id
-        )
+    runner = fastapi_request.app.state.runner
+    agent_service = AgentService(runner)
 
     async def event_generator():
         try:
-            runner = Runner(
-                agent=root_agent, app_name="sentinel", session_service=session_service
-            )
-            new_msg = types.Content(
-                role="user", parts=[types.Part.from_text(text=request.message)]
-            )
-
-            async for event in runner.run_async(
-                user_id=user_id, session_id=session_id, new_message=new_msg
+            async for chunk in agent_service.run_agent_task_stream(
+                prompt=request.message, user_id=user_id, session_id=session_id
             ):
-                author = event.author
-                text = ""
-                if event.content and event.content.parts:
-                    text = "".join([p.text for p in event.content.parts if p.text])
-
-                # Check for tool/function calls
-                func_calls = []
-                for fc in event.get_function_calls():
-                    func_calls.append(
-                        {"name": fc.name, "args": dict(fc.args) if fc.args else {}}
-                    )
-
-                # Check for tool/function responses
-                func_responses = []
-                for fr in event.get_function_responses():
-                    func_responses.append({"name": fr.name, "response": fr.response})
-
-                chunk = {
-                    "id": event.id,
-                    "author": author,
-                    "text": text,
-                    "function_calls": func_calls,
-                    "function_responses": func_responses,
-                    "is_final": event.is_final_response(),
-                }
-
                 yield f"data: {json.dumps(chunk)}\n\n"
         except Exception as e:
             err_chunk = {
