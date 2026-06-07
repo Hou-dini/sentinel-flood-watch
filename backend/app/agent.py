@@ -69,19 +69,20 @@ Always convert the changes in indices to percentages while citing the raw index 
 6. Present your findings objectively and cite the satellite image evidence.
 
 **Structured Output Requirement (CRITICAL):**
-Your final response MUST be formatted as a JSON object adhering to the Alert schema.
-Example:
+Your final response MUST be formatted as a JSON object adhering to the following schema.
+
+Schema:
 {
-  "site_name": "Korle Lagoon",
-  "coordinates": {
-    "latitude": 5.5344,
-    "longitude": -0.2197
-  },
-  "timestamp": "2026-06-07T10:00:00",
-  "agent_summary": "Satellite imagery analysis indicates significant anomalies...",
-  "severity": "Medium",
-  "status": "Active",
-  "evidence_link": "/static/mock_evidence.png"
+ "site_name": "Name of the monitored ecological site",
+ "coordinates": {
+   "latitude": "Latitude coordinate of the alert (float)",
+   "longitude": "Longitude coordinate of the alert (float)"
+ },
+ "timestamp": "ISO timestamp of the alert",
+ "agent_summary": "Descriptive summary of the encroachment or anomaly",
+ "severity": "Severity of the encroachment alert (e.g., Low, Medium, High)",
+ "status": "Current status of the alert (e.g., Active, Resolved, Investigating)",
+ "evidence_link": "link path to the satellite image evidence"
 }
 """
 
@@ -91,6 +92,7 @@ root_agent = Agent(
         model="gemini-3.5-flash",
         retry_options=types.HttpRetryOptions(attempts=3),
     ),
+    output_schema=Alert,
     instruction=INSTRUCTIONS,
     tools=[
         scan_zone_tool,

@@ -166,11 +166,14 @@
     - Defined `Coordinates`, `Alert`, and `Scan` Pydantic models in `app/models/coordinates.py`, `app/models/alert.py`, and `app/models/scan.py` respectively.
     - Integrated model validation directly into `DatabaseService` reads and writes (`save_alert`, `get_alerts`, `save_scan`, and `get_analytics_summary`), raising validation errors if data does not match the schemas.
     - Updated the test suite in `tests/unit/test_database_service.py` to pass valid mock data matching the new schemas, ensuring all 9 unit tests pass.
-13. **Separate Alert Saving from SMS Dispatching & Sub-agent Integration:**
+13. **Separate Alert Saving from SMS Dispatching & Root Agent Schema Enforcement:**
     - Refactored `send_alert_tool` to no longer save alerts directly. It now takes an `alert_id` (retrieved from the database) and simulates sending a Twilio SMS dispatch.
-    - Added an `alert_builder_agent` sub-agent in `app/agent.py` configured with `output_schema=Alert` to format encroachment findings into a structured JSON payload conforming to the Alert model.
-    - Updated agent instructions (`INSTRUCTIONS`) in `app/agent.py` to direct the root agent to: (a) delegate formatting to the `alert_builder_agent` sub-agent, (b) write the returned structured alert directly to MongoDB using the native `mongodb_insert_one` MCP tool, and (c) call `send_alert_tool` with the returned `inserted_id`.
+    - Configured the root agent (`sentinel_flood_watch_agent`) with `output_schema=Alert` to enforce schema-adherent responses using ADK's native model-level schema reinforcement.
+    - Updated agent instructions (`INSTRUCTIONS`) in `app/agent.py` to outline the structured output requirement and expected schema format.
+    - Directed the root agent to structure encroachment findings into a JSON object matching the `Alert` schema, write it directly to MongoDB using the native `mongodb_insert_one` MCP tool, and then pass the resulting `inserted_id` to `send_alert_tool`.
+    - Avoided any sub-agent overhead or complexity, keeping the entire workflow managed by the single root agent.
     - Created the `sentinel-alert-builder` prompt template in the Arize Prompt Hub under `elikplim Space` using the Arize CLI, and verified its template message configuration.
+
 
 ### Next Steps
 - Verify end-to-end functionality of the deployed live endpoint.
