@@ -20,6 +20,8 @@ from google.adk.apps import App
 from google.adk.models import Gemini
 from google.genai import types
 
+from app.models import Alert
+
 # Import our custom tools (excluding search_alerts_tool which is replaced by MongoDB MCP server)
 from app.tools import (
     scan_zone_tool,
@@ -56,12 +58,27 @@ Your Workflow:
    - If the site is NOT explicitly listed (e.g., "Weija Dam" or other landmarks), you MUST call the `lookup_coordinates_tool` or `web_search_tool` to search for and retrieve its actual coordinates in real time.
    - CRITICAL: Never guess coordinates, and never substitute coordinates of another site (like Densu Delta) for an unlisted location. If you cannot resolve the coordinates, explain this to the user and ask them to provide them.
 2. Call the `scan_zone_tool` with the resolved latitude and longitude to fetch baseline and current satellite bands (RGB, NDVI, MNDWI).
-3. Review the scan results returned by the tool. If the scan indicates an anomaly, explain your findings to the user. Describe the vegetation clearing (indicated by a decrease in NDVI) and waterway blockage/filling (indicated by a decrease in MNDWI). 
+3. Review the scan results returned by the tool. If the scan indicates an anomaly (encroachment), describe the vegetation clearing (indicated by a decrease in NDVI) and waterway blockage/filling (indicated by a decrease in MNDWI). 
 Always convert the changes in indices to percentages while citing the raw index values in addition. For example: "Water Channels (MNDWI): There was a -13.4% change in the water index (from -0.462 to -0.328)" or "Vegetation (NDVI): There was a -15.2% change in the vegetation index (from 0.450 to 0.382)".
-4. Promptly log the alert by calling `send_alert_tool` to notify disaster management authorities (NADMO) and the Accra Metropolitan Assembly (AMA). Mention the alert ID in your final response.
-5. If the user asks about past incidents or logged records, query the MongoDB database directly using your MongoDB MCP tools (for example, by finding documents in the 'alerts' collection of the 'sentinel_flood_watch' database).
-6. Present your findings objectively and cite the satellite image evidence.
+4. If an anomaly is detected, you MUST delegate to the `alert_builder_agent` sub-agent to structure the alert details according to the required schema. Pass the site name, resolved coordinates, agent summary description, severity level, and evidence link (e.g., current RGB url).
+5. Once the `alert_builder_agent` returns the structured JSON, write it directly to the 'alerts' collection of the 'sentinel_flood_watch' database by calling the `mongodb_insert_one` tool.
+   - For `mongodb_insert_one`, use: db="sentinel_flood_watch", collection="alerts", and document=<the formatted alert JSON>.
+6. Using the `inserted_id` returned by the `mongodb_insert_one` tool, immediately call `send_alert_tool(alert_id=...)` to dispatch the SMS alert notification to the authorities. Cite the final SMS notification status and alert ID in your response to the user.
+7. If the user asks about past incidents or logged records, query the MongoDB database directly using your MongoDB MCP tools (for example, by calling `mongodb_find` on the 'alerts' collection of the 'sentinel_flood_watch' database).
+8. Present your findings objectively and cite the satellite image evidence.
 """
+
+# Sub-agent to structure alerts into the official JSON schema using Pydantic output reinforcement
+alert_builder_agent = Agent(
+    name="alert_builder_agent",
+    model=Gemini(
+        model="gemini-3.5-flash",
+    ),
+    instruction="""Format the encroachment details into the structured Alert schema.
+You must strictly output a valid JSON object matching the Alert schema. Ensure all fields like coordinates, agent_summary, severity, status, and evidence_link are populated correctly based on the input details.""",
+    output_schema=Alert,
+    output_key="structured_alert",
+)
 
 root_agent = Agent(
     name="sentinel_flood_watch_agent",
@@ -77,6 +94,7 @@ root_agent = Agent(
         web_search_tool,
         lookup_coordinates_tool,
     ],
+    sub_agents=[alert_builder_agent],
 )
 
 app = App(
