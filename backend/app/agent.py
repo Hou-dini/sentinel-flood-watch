@@ -60,25 +60,30 @@ Your Workflow:
 2. Call the `scan_zone_tool` with the resolved latitude and longitude to fetch baseline and current satellite bands (RGB, NDVI, MNDWI).
 3. Review the scan results returned by the tool. If the scan indicates an anomaly (encroachment), describe the vegetation clearing (indicated by a decrease in NDVI) and waterway blockage/filling (indicated by a decrease in MNDWI). 
 Always convert the changes in indices to percentages while citing the raw index values in addition. For example: "Water Channels (MNDWI): There was a -13.4% change in the water index (from -0.462 to -0.328)" or "Vegetation (NDVI): There was a -15.2% change in the vegetation index (from 0.450 to 0.382)".
-4. If an anomaly is detected, you MUST delegate to the `alert_builder_agent` sub-agent to structure the alert details according to the required schema. Pass the site name, resolved coordinates, agent summary description, severity level, and evidence link (e.g., current RGB url).
-5. Once the `alert_builder_agent` returns the structured JSON, write it directly to the 'alerts' collection of the 'sentinel_flood_watch' database by calling the `mongodb_insert_one` tool.
-   - For `mongodb_insert_one`, use: db="sentinel_flood_watch", collection="alerts", and document=<the formatted alert JSON>.
-6. Using the `inserted_id` returned by the `mongodb_insert_one` tool, immediately call `send_alert_tool(alert_id=...)` to dispatch the SMS alert notification to the authorities. Cite the final SMS notification status and alert ID in your response to the user.
-7. If the user asks about past incidents or logged records, query the MongoDB database directly using your MongoDB MCP tools (for example, by calling `mongodb_find` on the 'alerts' collection of the 'sentinel_flood_watch' database).
-8. Present your findings objectively and cite the satellite image evidence.
-"""
+4. If an anomaly is detected:
+   - Format the alert details into a structured JSON conforming to the Alert schema. Ensure all fields like coordinates (latitude and longitude), agent_summary, severity, status, and evidence_link are populated correctly.
+   - Write the formatted JSON directly to the 'alerts' collection of the 'sentinel_flood_watch' database by calling the `mongodb_insert_one` tool.
+     - For `mongodb_insert_one`, use: db="sentinel_flood_watch", collection="alerts", and document=<the formatted alert JSON>.
+   - Using the `inserted_id` returned by the `mongodb_insert_one` tool, immediately call `send_alert_tool(alert_id=...)` to dispatch the SMS alert notification to the authorities.
+5. If the user asks about past incidents or logged records, query the MongoDB database directly using your MongoDB MCP tools (for example, by calling `mongodb_find` on the 'alerts' collection of the 'sentinel_flood_watch' database).
+6. Present your findings objectively and cite the satellite image evidence.
 
-# Sub-agent to structure alerts into the official JSON schema using Pydantic output reinforcement
-alert_builder_agent = Agent(
-    name="alert_builder_agent",
-    model=Gemini(
-        model="gemini-3.5-flash",
-    ),
-    instruction="""Format the encroachment details into the structured Alert schema.
-You must strictly output a valid JSON object matching the Alert schema. Ensure all fields like coordinates, agent_summary, severity, status, and evidence_link are populated correctly based on the input details.""",
-    output_schema=Alert,
-    output_key="structured_alert",
-)
+**Structured Output Requirement (CRITICAL):**
+Your final response MUST be formatted as a JSON object adhering to the Alert schema.
+Example:
+{
+  "site_name": "Korle Lagoon",
+  "coordinates": {
+    "latitude": 5.5344,
+    "longitude": -0.2197
+  },
+  "timestamp": "2026-06-07T10:00:00",
+  "agent_summary": "Satellite imagery analysis indicates significant anomalies...",
+  "severity": "Medium",
+  "status": "Active",
+  "evidence_link": "/static/mock_evidence.png"
+}
+"""
 
 root_agent = Agent(
     name="sentinel_flood_watch_agent",
@@ -94,7 +99,6 @@ root_agent = Agent(
         web_search_tool,
         lookup_coordinates_tool,
     ],
-    sub_agents=[alert_builder_agent],
 )
 
 app = App(
