@@ -1,15 +1,17 @@
+import logging
 import os
+from contextlib import asynccontextmanager
 
 from dotenv import load_dotenv
 
 load_dotenv()
 import json
-from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
+from google.adk.memory import InMemoryMemoryService
 
 # Import ADK primitives
 from google.adk.runners import Runner
@@ -19,7 +21,7 @@ from pydantic import BaseModel
 # Import our agent, tools and database functions
 from app.agent import root_agent
 from app.app_utils.telemetry import setup_telemetry
-from app.database import get_alerts, get_analytics_summary
+from app.database import db_service, get_alerts, get_analytics_summary
 from app.services import AgentService
 from app.tools import STATIC_DIR, scan_zone_tool
 
@@ -27,20 +29,42 @@ from app.tools import STATIC_DIR, scan_zone_tool
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Initialize Telemetry (Arize Phoenix & GCP Agent Engine)
-    setup_telemetry()
+    try:
+        setup_telemetry()
+        logging.info("Telemetry initialized successfully.")
+    except Exception as e:
+        logging.error(f"Failed to initialize telemetry: {e}")
 
     # Initialize the ADK memory and session services and the Runner object
-    session_service = InMemorySessionService()
-    runner = Runner(
-        agent=root_agent,
-        app_name="sentinel",
-        session_service=session_service,
-    )
+    try:
+        session_service = InMemorySessionService()
+        memory_service = InMemoryMemoryService()
+        runner = Runner(
+            agent=root_agent,
+            app_name="sentinel",
+            session_service=session_service,
+            memory_service=memory_service,
+        )
+        app.state.runner = runner
+        logging.info("ADK Runner and session services initialized successfully.")
+    except Exception as e:
+        logging.error(f"Failed to initialize ADK Runner: {e}")
+        app.state.runner = None
 
-    # Add the Runner as a state variable to the FastAPI app
-    app.state.runner = runner
+    # Connect to the database proactively to check connection health at startup
+    try:
+        db_service.connect()
+    except Exception as e:
+        logging.error(f"Database connection error during startup: {e}")
 
     yield
+
+    # Cleanup resources upon shutdown
+    try:
+        db_service.disconnect()
+        logging.info("Database service disconnected successfully.")
+    except Exception as e:
+        logging.error(f"Error disconnecting database service on shutdown: {e}")
 
 
 # FastAPI Setup

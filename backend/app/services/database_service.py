@@ -61,6 +61,18 @@ class DatabaseService:
         logging.info("Using local JSON file-based database.")
         self._initialized = True
 
+    def disconnect(self) -> None:
+        """Closes the MongoDB connection client and resets initialized state."""
+        if self.client:
+            try:
+                self.client.close()
+                logging.info("Closed MongoDB Atlas connection.")
+            except Exception as e:
+                logging.error(f"Error closing MongoDB connection: {e}")
+            self.client = None
+            self.db = None
+        self._initialized = False
+
     async def save_alert(self, alert_doc: dict[str, Any] | Alert) -> str:
         """Saves an encroachment alert to database (MongoDB or local JSON)."""
         self.connect()
