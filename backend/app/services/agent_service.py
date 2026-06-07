@@ -44,8 +44,14 @@ class AgentService:
                 app_name=self.runner.app_name, user_id=user_id, session_id=session_id
             )
 
-        # Secure the user input with strict boundary markers to mitigate prompt injection
-        secure_prompt = f"The following is raw input from the user:\n<user_input>\n{prompt}\n</user_input>"
+        # Secure the user input with strict boundary markers to mitigate prompt injection and inject current time
+        import datetime
+
+        current_time = datetime.datetime.utcnow().isoformat() + "Z"
+        secure_prompt = (
+            f"Current UTC Time Context: {current_time}\n\n"
+            f"The following is raw input from the user:\n<user_input>\n{prompt}\n</user_input>"
+        )
 
         async for chunk in self._get_agent_response_stream(
             secure_prompt, user_id, session_id

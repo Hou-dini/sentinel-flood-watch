@@ -235,8 +235,8 @@ wheels = [
 ]
 
 [[package]]
-name = "arize-phoenix-otel"
-version = "0.16.1"
+name = "arize-otel"
+version = "0.13.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "openinference-instrumentation" },
@@ -244,13 +244,10 @@ dependencies = [
     { name = "opentelemetry-exporter-otlp" },
     { name = "opentelemetry-proto" },
     { name = "opentelemetry-sdk" },
-    { name = "opentelemetry-semantic-conventions" },
-    { name = "typing-extensions" },
-    { name = "wrapt" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/37/97/5aef2776ee17eacb24a82de719312008ca0a16b915415cc9363a9a9b1536/arize_phoenix_otel-0.16.1.tar.gz", hash = "sha256:28ba1d43dcd2dc556f6cac25622c3333e613e2cf1d687832a9ed5ce2c20e17be", size = 20933, upload-time = "2026-05-03T19:07:02.563Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/9e/70/e318acceb6d7807a376ac126bde32bd9457ddf7a525fdcd629d9672f1bcb/arize_otel-0.13.0.tar.gz", hash = "sha256:6ccd1e26be23a52a0dad2798c924036e2c73a0db086a2214c2817fcfa36a31e6", size = 16799, upload-time = "2026-05-27T20:14:56.61Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/ee/2e/e495446a8a715d9892a4dbc56e11b18fb6f07a634182babc0b0ac6827d9c/arize_phoenix_otel-0.16.1-py3-none-any.whl", hash = "sha256:eb71f7be8d94e68f5cd82b134f7ea1710fa73374bf0d8d663ce6242332871ff9", size = 18033, upload-time = "2026-05-03T19:07:01.395Z" },
+    { url = "https://files.pythonhosted.org/packages/21/8e/2e067e00f27aba8999dd610dada7c119d728a545b32d5381fe7898b32bb4/arize_otel-0.13.0-py3-none-any.whl", hash = "sha256:1748b42d432c6b8013200e62804baa20b0e471a074b1cfe573a9bd0026f6515b", size = 17745, upload-time = "2026-05-27T20:14:55.321Z" },
 ]
 
 [[package]]
@@ -332,7 +329,7 @@ name = "backend"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
-    { name = "arize-phoenix-otel" },
+    { name = "arize-otel" },
     { name = "earthengine-api" },
     { name = "fastapi" },
     { name = "gcsfs" },
@@ -370,7 +367,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "arize-phoenix-otel", specifier = ">=0.16.1" },
+    { name = "arize-otel", specifier = ">=0.9.0" },
     { name = "codespell", marker = "extra == 'lint'", specifier = ">=2.2.0,<3.0.0" },
     { name = "earthengine-api", specifier = ">=1.7.26" },
     { name = "fastapi", specifier = ">=0.136.0" },

@@ -70,7 +70,8 @@ Always convert the changes in indices to percentages while citing the raw index 
 6. Present your findings objectively and cite the satellite image evidence.
 
 **Structured Output Requirement (CRITICAL):**
-Your final response MUST be formatted as a JSON object adhering to the following schema.
+Your final response MUST be formatted as a JSON object wrapped inside a markdown code block (```json ... ```) adhering to the following schema.
+Use the current UTC time provided in the system prompt context for the timestamp.
 
 Schema:
 {
@@ -93,7 +94,6 @@ root_agent = Agent(
         model="gemini-3.5-flash",
         retry_options=types.HttpRetryOptions(attempts=3),
     ),
-    output_schema=Alert,
     instruction=INSTRUCTIONS,
     tools=[
         scan_zone_tool,
