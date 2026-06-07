@@ -317,6 +317,50 @@ function renderMarkdown(text) {
         .replace(/\n/g, '<br>');
 }
 
+/**
+ * Detects when the agent returns a structured JSON response wrapped in a
+ * markdown fenced code block (```json ... ```) — the format enforced by the
+ * agent's current instruction.
+ *
+ * Returns an object with:
+ *   { isStructured: true,  summary: string, json: object }  — on success
+ *   { isStructured: false }                                  — plain markdown
+ */
+function parseAgentJsonResponse(text) {
+    const fenceMatch = text.match(/```json\s*([\s\S]*?)\s*```/);
+    if (!fenceMatch) return { isStructured: false };
+    try {
+        const parsed = JSON.parse(fenceMatch[1]);
+        return { isStructured: true, summary: parsed.agent_summary || "", json: parsed };
+    } catch (_) {
+        return { isStructured: false };
+    }
+}
+
+/**
+ * Builds the inner HTML for a structured agent response bubble.
+ * Renders agent_summary as prose and the full JSON as a collapsible
+ * <details> block so the user can inspect the raw schema if needed.
+ */
+function buildStructuredBubble(parsed) {
+    const summaryHtml = renderMarkdown(parsed.summary);
+    const detailRows = Object.entries(parsed.json)
+        .filter(([k]) => k !== 'agent_summary')
+        .map(([k, v]) => {
+            const label = k.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+            const value = typeof v === 'object' ? JSON.stringify(v) : String(v);
+            return `<tr><td class="json-key">${label}</td><td class="json-val">${value}</td></tr>`;
+        }).join('');
+
+    return `
+        <div class="bubble-content">${summaryHtml}</div>
+        <details class="agent-json-details">
+            <summary>View structured data</summary>
+            <table class="agent-json-table"><tbody>${detailRows}</tbody></table>
+        </details>
+    `;
+}
+
 function appendMessage(role, text) {
     const container = document.getElementById("chat-messages");
     
@@ -467,9 +511,11 @@ async function executeAgentChat(messageText) {
                             bubbleElement.className = "chat-bubble agent";
                             document.getElementById("chat-messages").appendChild(bubbleElement);
                         }
-                        
+
+                        // While streaming, render markdown as usual (the JSON fence
+                        // arrives as one final chunk so streaming looks normal).
+                        // On the final event we re-render with the structured parser.
                         const formattedText = renderMarkdown(agentText);
-                        
                         bubbleElement.innerHTML = `
                             <div class="bubble-content">${formattedText}</div>
                             <div class="bubble-meta">Agent • Streaming...</div>
@@ -480,7 +526,17 @@ async function executeAgentChat(messageText) {
                     }
                     
                     if (dataJson.is_final && bubbleElement) {
-                        bubbleElement.querySelector(".bubble-meta").innerText = "Agent • Just Now";
+                        // Re-parse the complete accumulated text. If the agent
+                        // returned a structured JSON block, render it as a
+                        // human-readable summary + collapsible details panel.
+                        const parsed = parseAgentJsonResponse(agentText);
+                        if (parsed.isStructured) {
+                            bubbleElement.innerHTML =
+                                buildStructuredBubble(parsed) +
+                                `<div class="bubble-meta">Agent • Just Now</div>`;
+                        } else {
+                            bubbleElement.querySelector(".bubble-meta").innerText = "Agent • Just Now";
+                        }
                         appendTraceLog("system", "Agent execution completed successfully.");
                     }
                 }
