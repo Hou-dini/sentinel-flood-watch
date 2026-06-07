@@ -54,3 +54,19 @@ This document captures engineering lessons, technical challenges, options consid
 * **Problem:** The Phoenix OSS `register()` function defaults to a `SimpleSpanProcessor`, which exports spans synchronously on every LLM call. In production (Cloud Run), this adds latency to every request and generates warning logs: *"It is strongly advised to use a BatchSpanProcessor in production environments."*
 * **Solution:** `arize.otel.register()` uses a `BatchSpanProcessor` by default, which queues spans and exports them asynchronously in batches — the correct behaviour for production workloads. No extra configuration is needed; switching to `arize-otel` resolves this automatically.
 * **What to Avoid:** Never use `SimpleSpanProcessor` in production services with high request volume. It introduces synchronous I/O on the hot request path and will cause latency spikes under load.
+
+## 13. FastAPI Lifespan and Resource Cleanup Hooks
+* **Problem:** Database connections and telemetry resources instantiated globally or ad-hoc inside API routes can lead to duplicate connections, thread-safety issues, or unclosed resource pools on shutdown.
+* **Solution:** Declare a FastAPI `lifespan(app: FastAPI)` function to manage startup and shutdown processes. Connect clients proactively at startup, store the runner inside `app.state`, and cleanly call `disconnect()` on shutdown.
+
+## 14. Module-Level Environment Variable Reads
+* **Problem:** Environment variables (like `MONGODB_URI`) are often read at the module level when configuring toolsets (e.g. in `mongodb_mcp_tool.py`). If these modules are imported before `load_dotenv()` runs in `main.py`, they evaluate to `None` or empty strings.
+* **Solution:** Always call `load_dotenv()` at the top of configuration modules that read `os.environ` keys to ensure variables are loaded regardless of import sequence.
+
+## 15. MongoDB MCP Server Renaming & Node v24 ESM Interop
+* **Problem:** The deprecated `@mongodb-js/mongodb-mcp-server` package contains an ESM resolution bug on Node.js v24 (`Cannot find module 'mongodb-redact/dist/.esm-wrapper.mjs'`). This causes the MCP process to crash immediately at startup.
+* **Solution:** Use the renamed package **`mongodb-mcp-server`** in both local execution (`npx mongodb-mcp-server`) and Docker container configuration (`npm install -g mongodb-mcp-server`), which resolves the ESM interop bug.
+
+## 16. Agent Prompt Guards for Missing/Unstable Tools
+* **Problem:** If a critical tool (like a database writer) fails to load or connect, the agent doesn't understand why the tool is missing. It may enter a loop calling search tools to find it or fabricate fake data (such as mock database IDs) to pass to downstream tools.
+* **Solution:** Insert strict prompt guard rules in the system instructions directing the agent to fail fast and report connection issues directly to the user if key database tools are missing or fail, rather than searching the web or guessing IDs.
