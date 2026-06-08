@@ -37,13 +37,36 @@ async def lifespan(app: FastAPI):
 
     # Initialize the ADK memory and session services and the Runner object
     try:
-        session_service = InMemorySessionService()
-        memory_service = InMemoryMemoryService()
+        is_prod = os.environ.get("ENV") == "production" or "GOOGLE_CLOUD_PROJECT" in os.environ
+        
+        if is_prod:
+            from google.adk.sessions import VertexAiSessionService
+            from google.adk.memory import VertexAiMemoryBankService
+            
+            project_id = os.environ.get("GOOGLE_CLOUD_PROJECT")
+            location = os.environ.get("GOOGLE_CLOUD_LOCATION", "global")
+            
+            session_service = VertexAiSessionService(project=project_id, location=location)
+            memory_service = VertexAiMemoryBankService(project=project_id, location=location)
+            logging.info("Initialized production Vertex AI Session and Memory services.")
+        else:
+            session_service = InMemorySessionService()
+            memory_service = InMemoryMemoryService()
+            logging.info("Initialized local in-memory Session and Memory services.")
+
+        plugins = []
+        model_armor_template = os.environ.get("MODEL_ARMOR_TEMPLATE")
+        if model_armor_template:
+            from app.app_utils.safety_plugin import ModelArmorSafetyPlugin
+            plugins.append(ModelArmorSafetyPlugin(template_name=model_armor_template))
+            logging.info("Model Armor safety plugin configured.")
+
         runner = Runner(
             agent=root_agent,
             app_name="sentinel",
             session_service=session_service,
             memory_service=memory_service,
+            plugins=plugins,
         )
         app.state.runner = runner
         logging.info("ADK Runner and session services initialized successfully.")

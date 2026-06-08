@@ -20,6 +20,7 @@ dependencies = [
     "motor>=3.7.1",
     "pymongo>=4.17.0",
     "pillow>=12.2.0",
+    "google-cloud-modelarmor>=0.6.0",
 ]
 requires-python = ">=3.10,<3.14"
 
