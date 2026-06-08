@@ -46,17 +46,21 @@ A **Vanilla HTML/CSS/JS web dashboard** provides:
 - **Backend Server:** FastAPI / Uvicorn (Python 3.11)
 - **Data Source:** Google Earth Engine (Sentinel-2 Harmonized Surface Reflectance: `COPERNICUS/S2_SR_HARMONIZED`)
 - **Database:** MongoDB Atlas or local persistent `mongo:6.0` service (fallback to local `alerts_db.json`)
+- **Production Session/Memory Persistence:** Google ADK `VertexAiSessionService` and `VertexAiMemoryBankService` (with local `InMemory` fallbacks)
+- **AI Application Security:** Google Cloud Model Armor (`google-cloud-modelarmor`)
 - **Observability:** Arize Phoenix / OpenInference OTel Tracing
 - **Frontend:** HTML5, CSS3 (Vanilla Dark Glassmorphism), JavaScript, Leaflet.js
 - **Containerization:** Docker & Docker Compose
 - **CI/CD:** GitHub Actions (.github/workflows/ci.yml)
-
+ 
 ## 3. Engineering Decisions & Trade-Offs
 - **Mock Fallback Pipeline:** To ensure the system operates during evaluation without GEE credentials, the scanner falls back to Pillow-generated mock satellite bands.
 - **Async Database Connection:** We use `motor` (async MongoDB client) to keep FastAPI non-blocking, falling back to synchronous local JSON read/writes only when database connection strings are absent.
 - **Vanilla CSS over Tailwind:** Vanilla CSS provides maximum speed and visual customization, fitting the responsive glassmorphic aesthetic without introducing extra build pipelines.
 - **Modular Package Refactoring:** Refactored the monolithic `tools.py` into a modular `tools/` package structure to separate tool definitions (scanning, geocoding, searching, alerting) and improve maintainability.
 - **CI/CD Environment Controls:** Configured GitHub Actions to only run unit tests that mock external GCP/GEE APIs, preventing build failures due to missing credentials on public runners.
+- **Production Persistent State Migration:** Transitioned session and long-term memory management from transient local memory (`InMemorySessionService` and `InMemoryMemoryService`) to environment-aware persistence. In production, the system dynamically binds to Vertex AI Session Service and Memory Bank Service to support serverless container scaling, while preserving local in-memory fallbacks to keep offline developer tests fast and dependency-free.
+- **Custom Security Guardrails with Model Armor:** Implemented a custom ADK safety plugin (`ModelArmorSafetyPlugin`) that intercepts LLM requests and responses. Designed a *fail-open* policy for API connection timeouts to guarantee satellite scanner availability, and a *fail-closed* policy for policy matches to protect the application from prompt-injection and jailbreak attacks. Prompt filtering is restricted to injection and jailbreaks (excluding PII scrubbing) to eliminate latency overhead for fields not present in current system inputs.
 
 ## 4. Key Features
 - **Visual Evidence Slider:** Compare NDVI/MNDWI indices dynamically.

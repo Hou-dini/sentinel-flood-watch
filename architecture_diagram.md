@@ -28,7 +28,8 @@ graph TD
     subgraph Backend ["API Layer (FastAPI Backend)"]
         API["main.py (FastAPI App)"]:::backend
         Static["/static (Mock Imagery Server)"]:::backend
-        Session["InMemorySessionService"]:::backend
+        Session["InMemorySessionService / VertexAiSessionService"]:::backend
+        Memory["InMemoryMemoryService / VertexAiMemoryBankService"]:::backend
     end
 
     %% Agent Components
@@ -37,23 +38,25 @@ graph TD
         ADKRunner["Runner (ADK Orchestrator)"]:::agent
         Agent["Agent (sentinel_flood_watch_agent)"]:::agent
         Model["Gemini Model (gemini-3.5-flash)"]:::agent
+        MA["Model Armor (Safety Plugin)"]:::agent
         
         ADKApp --> ADKRunner
         ADKRunner --> Agent
-        Agent --> Model
+        Agent --> MA
+        MA --> Model
     end
 
     %% Tools Components
-    subgraph Tools ["Agent Tools (tools.py)"]
+    subgraph Tools ["Agent Tools"]
         ScanTool["scan_zone_tool"]:::agent
         SendTool["send_alert_tool"]:::agent
-        SearchTool["search_alerts_tool"]:::agent
+        MCPTool["mongodb_mcp_tool (MongoDB MCP)"]:::agent
     end
 
     %% Data Components
     subgraph Data ["Data & Integration Layer"]
         DB["database.py (Database Interface)"]:::data
-        Mongo["MongoDB Atlas"]:::data
+        Mongo["MongoDB Atlas / Local Service"]:::data
         JSON["Local Storage (alerts_db.json)"]:::data
         GEE["Google Earth Engine API"]:::data
         Pillow["Pillow Mock Generator"]:::data
@@ -79,20 +82,22 @@ graph TD
     
     API -- "Resolves static links" --> Static
     API -- "Orchestrates session state" --> Session
+    API -- "Orchestrates memory state" --> Memory
     API -- "Invokes runner" --> ADKRunner
     
     Agent -- "Registers" --> ScanTool
     Agent -- "Registers" --> SendTool
-    Agent -- "Registers" --> SearchTool
+    Agent -- "Registers" --> MCPTool
     
     ScanTool -- "1. Try API Auth" --> GEE
     ScanTool -- "2. Fallback Generation" --> Pillow
     Pillow -- "Saves mock PNGs" --> Static
     
     SendTool -- "Writes Alert Record" --> DB
-    SearchTool -- "Queries Alerts" --> DB
+    MCPTool -- "Queries & Writes DB" --> Mongo
     
     ADKRunner -. "Traces Execution" .-> Tel
+    ADKRunner -. "Intercepts safety" .-> MA
 ```
 
 ---
@@ -106,7 +111,7 @@ The user interface is built as a lightweight, interactive web dashboard:
 * **`index.js`**: Core client-side execution, handling:
   * Fetching historical alerts via `/api/v1/alerts`.
   * Initiating direct scans of Accra coordinates via `/api/v1/scan-zone`.
-  * Initiating conversational interactions via `/api/v1/chat` and parsing the server-sent events (SSE) stream to display real-time thinking, tool execution logs, and Gemini responses.
+  * Initiating conversational interactions via `/api/v1/chat` and parsing the server-sent events (SSE) stream to display real-time thinking, tool execution logs, and Gemini responses. Custom client-side parsing intercepts JSON response cards (objects or arrays) to render structured HTML details tables.
 
 ### B. API Layer (FastAPI Backend)
 A fast, asynchronous HTTP server built with FastAPI that exposes REST and streaming endpoints:
@@ -120,13 +125,13 @@ The agentic intelligence layer orchestrating tools to monitor Accra's waterways:
 * **`Agent`**: The `sentinel_flood_watch_agent` configured with detailed system instructions. It defines coordinates for sites of interest (Korle Lagoon, Odaw River, Sakumono Ramsar, Densu Delta) and runs a multi-step diagnostic workflow when prompted.
 * **`Model`**: Leverages `Gemini (gemini-3.5-flash)` as the reasoning engine.
 * **`App`**: Wraps the agent to expose operations and orchestrate configurations.
-* **`Runner`**: Executes agent sessions using `InMemorySessionService` to manage and store conversation history.
+* **`Runner`**: Executes agent sessions. In production, it dynamically connects to `VertexAiSessionService` and `VertexAiMemoryBankService` for persistent session management and long-term conversation recall; in local development, it falls back to `InMemorySessionService` and `InMemoryMemoryService`.
 
-### D. Agent Tools (`tools.py`)
-Custom Python functions decorated/structured to interface directly with the Gemini model:
+### D. Agent Tools
+Custom functions decorated/structured to interface directly with the Gemini model:
 * **`scan_zone_tool`**: Receives coordinates, attempts Google Earth Engine connection, computes vegetation (NDVI) and water (MNDWI) indices, and returns URLs for baseline and current images.
 * **`send_alert_tool`**: Commits verified encroachment instances to the database (saving details such as severity, site name, coordinate location, evidence link, and agent summary) and triggers NADMO/AMA alerts.
-* **`search_alerts_tool`**: Searches database logs for matching keywords to retrieve past incident details.
+* **`mongodb_mcp_tool`**: Interoperates with Node's `mongodb-mcp-server` to perform database queries (`mongodb_find`, `mongodb_insert_one`) directly on MongoDB Atlas collections, removing monolithic DB tool scripts.
 
 ### E. Data & Integration Layer
 Handles all persistent storage and external integration:
@@ -138,3 +143,10 @@ Handles all persistent storage and external integration:
 Integrates enterprise-grade logging and monitoring for AI agents:
 * **Arize Phoenix**: Automatic OpenTelemetry-based tracing of Gemini model calls and custom ADK tool executions.
 * **GCP Cloud Logging & GCS Logging**: Ingests agent telemetry, tool metrics, and feedback records, exporting them to standard Google Cloud Storage buckets for post-evaluation audits.
+
+### G. Safety & Guardrails (Model Armor)
+Managed runtime security for LLM inputs and outputs:
+* **`ModelArmorSafetyPlugin`**: A custom ADK app-level plugin registered with the `Runner`. 
+  * **Input Shield (`before_model_callback`)**: Inspects incoming user prompts for jailbreaks and prompt injections. 
+  * **Output Shield (`after_model_callback`)**: Inspects model responses for output violations.
+  * **Exception Fallbacks:** Configured with a fail-open timeout policy to prevent disabling monitoring tools, and a fail-closed policy when an explicit security violation is caught. Prompt-injection and jailbreak filters are active while PII-scrubbing is bypassed to keep latency minimal.

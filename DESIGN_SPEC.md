@@ -29,16 +29,17 @@ The system integrates Google Earth Engine (Sentinel-2 imagery), Google ADK (for 
 * **Arguments:** `latitude: float`, `longitude: float`, `site_name: str`, `agent_summary: str`, `severity: str` (Low/Medium/High)
 * **Returns:** Dict indicating success and the database record ID.
 
-### 3. `search_alerts_tool`
-* **Purpose:** Query database of existing alerts.
-* **Arguments:** `query: str`
-* **Returns:** List of matching alert records.
+### 3. `mongodb_mcp_tool`
+* **Purpose:** Interfaces with `mongodb-mcp-server` to execute raw database queries on the alerts and scans collections.
+* **Arguments:** Executes standard MCP database commands (e.g. `mongodb_find`, `mongodb_insert_one`).
+* **Returns:** Query outputs or insertion confirmations.
 
 ## Constraints & Safety Rules
 - **No False Positives:** The agent must only flag anomalies when there is visible structural or land-clearing change.
 - **Strict Buffer Zones:** Flag constructions within 100 meters of designated waterways.
 - **GCP Location:** Ensure Vertex AI calls use the correct region.
 - **Fallback Capability:** If Earth Engine credentials are unavailable, seamlessly generate realistic mock indices based on Accra's real coordinate patterns to prevent code crashes during hackathon presentations.
+- **AI Application Guardrails (Model Armor):** The agent's prompts and outputs are wrapped with a Model Armor safety template to filter jailbreaks and prompt-injections. The guardrail is configured to fail-open during API timeouts and fail-closed when a safety match occurs. PII filtering is bypassed to optimize execution latency.
 
 ## Success Criteria
 - **Detection Accuracy:** Over 90% accuracy in detecting simulated/real building encroachment.
