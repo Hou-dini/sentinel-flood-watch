@@ -319,38 +319,136 @@ function renderMarkdown(text) {
 
 /**
  * Detects when the agent returns a structured JSON response wrapped in a
- * markdown fenced code block (```json ... ```) — the format enforced by the
- * agent's current instruction.
+ * markdown fenced code block (```json ... ```) or raw JSON array/object.
  *
  * Returns an object with:
  *   { isStructured: true,  summary: string, json: object }  — on success
  *   { isStructured: false }                                  — plain markdown
  */
 function parseAgentJsonResponse(text) {
-    const fenceMatch = text.match(/```json\s*([\s\S]*?)\s*```/);
-    if (!fenceMatch) return { isStructured: false };
-    try {
-        const parsed = JSON.parse(fenceMatch[1]);
-        return { isStructured: true, summary: parsed.agent_summary || "", json: parsed };
-    } catch (_) {
-        return { isStructured: false };
+    const trimmed = text.trim();
+
+    // 1. Try to find a ```json ... ``` code fence (case-insensitive)
+    let fenceMatch = trimmed.match(/```json\s*([\s\S]*?)\s*```/i);
+    let jsonString = null;
+    let nonJsonText = "";
+
+    if (fenceMatch) {
+        jsonString = fenceMatch[1].trim();
+        const fenceIndex = trimmed.indexOf(fenceMatch[0]);
+        const beforeText = trimmed.substring(0, fenceIndex).trim();
+        const afterText = trimmed.substring(fenceIndex + fenceMatch[0].length).trim();
+        nonJsonText = [beforeText, afterText].filter(t => t).join("\n\n");
+    } else {
+        // Try general ``` ... ``` code fence
+        fenceMatch = trimmed.match(/```\s*([\s\S]*?)\s*```/);
+        if (fenceMatch) {
+            jsonString = fenceMatch[1].trim();
+            const fenceIndex = trimmed.indexOf(fenceMatch[0]);
+            const beforeText = trimmed.substring(0, fenceIndex).trim();
+            const afterText = trimmed.substring(fenceIndex + fenceMatch[0].length).trim();
+            nonJsonText = [beforeText, afterText].filter(t => t).join("\n\n");
+        } else {
+            // 2. Try to locate the first '{' or '[' and last '}' or ']' to extract raw JSON
+            const startIdxObj = trimmed.indexOf('{');
+            const startIdxArr = trimmed.indexOf('[');
+            let startIdx = -1;
+            let endIdx = -1;
+            
+            if (startIdxObj !== -1 && startIdxArr !== -1) {
+                startIdx = Math.min(startIdxObj, startIdxArr);
+            } else {
+                startIdx = startIdxObj !== -1 ? startIdxObj : startIdxArr;
+            }
+            
+            if (startIdx !== -1) {
+                if (startIdx === startIdxObj) {
+                    endIdx = trimmed.lastIndexOf('}');
+                } else {
+                    endIdx = trimmed.lastIndexOf(']');
+                }
+            }
+            
+            if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
+                jsonString = trimmed.substring(startIdx, endIdx + 1);
+                const beforeText = trimmed.substring(0, startIdx).trim();
+                const afterText = trimmed.substring(endIdx + 1).trim();
+                nonJsonText = [beforeText, afterText].filter(t => t).join("\n\n");
+            }
+        }
     }
+
+    if (jsonString) {
+        try {
+            const parsed = JSON.parse(jsonString);
+            if (parsed && (typeof parsed === 'object' || Array.isArray(parsed))) {
+                let summary = nonJsonText;
+                if (!summary) {
+                    if (Array.isArray(parsed)) {
+                        summary = `Retrieved list of ${parsed.length} items.`;
+                    } else if (parsed.agent_summary) {
+                        summary = parsed.agent_summary;
+                    } else if (parsed.message) {
+                        summary = parsed.message;
+                    } else {
+                        summary = "Structured data response:";
+                    }
+                }
+                return { isStructured: true, summary: summary, json: parsed };
+            }
+        } catch (_) {
+            // Ignore parse errors and fall through
+        }
+    }
+
+    return { isStructured: false };
 }
 
 /**
  * Builds the inner HTML for a structured agent response bubble.
- * Renders agent_summary as prose and the full JSON as a collapsible
+ * Renders agent_summary or non-JSON context as prose and the full JSON as a collapsible
  * <details> block so the user can inspect the raw schema if needed.
  */
 function buildStructuredBubble(parsed) {
     const summaryHtml = renderMarkdown(parsed.summary);
-    const detailRows = Object.entries(parsed.json)
-        .filter(([k]) => k !== 'agent_summary')
-        .map(([k, v]) => {
-            const label = k.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-            const value = typeof v === 'object' ? JSON.stringify(v) : String(v);
-            return `<tr><td class="json-key">${label}</td><td class="json-val">${value}</td></tr>`;
+    let detailRows = "";
+
+    const formatValue = (v) => {
+        if (v === null || v === undefined) return "<em>null</em>";
+        if (typeof v === 'object') {
+            return `<pre style="margin: 0; font-family: inherit; font-size: inherit; white-space: pre-wrap; background: rgba(0,0,0,0.1); padding: 4px; border-radius: 4px;">${JSON.stringify(v, null, 2)}</pre>`;
+        }
+        return String(v);
+    };
+
+    if (Array.isArray(parsed.json)) {
+        // It's a list of records
+        detailRows = parsed.json.map((item, idx) => {
+            if (item && typeof item === 'object' && !Array.isArray(item)) {
+                const itemRows = Object.entries(item)
+                    .map(([k, v]) => {
+                        const label = k.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+                        return `<tr><td class="json-key" style="padding-left: 20px;">${label}</td><td class="json-val">${formatValue(v)}</td></tr>`;
+                    }).join('');
+                return `
+                    <tr><td colspan="2" class="json-key" style="background: rgba(255,255,255,0.02); font-weight: bold; border-bottom: 1px solid rgba(255,255,255,0.05); padding: 8px 12px;">Item #${idx + 1}</td></tr>
+                    ${itemRows}
+                `;
+            } else {
+                return `<tr><td class="json-key">Item #${idx + 1}</td><td class="json-val">${formatValue(item)}</td></tr>`;
+            }
         }).join('');
+    } else {
+        // It's a single object.
+        // If the main summary is exactly parsed.agent_summary, we can skip showing it in the table to avoid redundancy.
+        const filterKey = parsed.summary === parsed.json.agent_summary ? 'agent_summary' : null;
+        detailRows = Object.entries(parsed.json)
+            .filter(([k]) => k !== filterKey)
+            .map(([k, v]) => {
+                const label = k.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+                return `<tr><td class="json-key">${label}</td><td class="json-val">${formatValue(v)}</td></tr>`;
+            }).join('');
+    }
 
     return `
         <div class="bubble-content">${summaryHtml}</div>
@@ -371,6 +469,19 @@ function appendMessage(role, text) {
     const bubble = document.createElement("div");
     bubble.className = `chat-bubble ${role}`;
     
+    if (role === 'agent') {
+        const parsed = parseAgentJsonResponse(text);
+        if (parsed.isStructured) {
+            bubble.innerHTML = `
+                ${buildStructuredBubble(parsed)}
+                <div class="bubble-meta">Agent • Just Now</div>
+            `;
+            container.appendChild(bubble);
+            container.scrollTop = container.scrollHeight;
+            return;
+        }
+    }
+
     const formattedText = renderMarkdown(text);
 
     bubble.innerHTML = `
@@ -540,6 +651,18 @@ async function executeAgentChat(messageText) {
                         appendTraceLog("system", "Agent execution completed successfully.");
                     }
                 }
+            }
+        }
+
+        // Final fallback: if the stream closed but the bubble remains in "Streaming..." state, format it
+        if (bubbleElement && bubbleElement.querySelector(".bubble-meta") && bubbleElement.querySelector(".bubble-meta").innerText === "Agent • Streaming...") {
+            const parsed = parseAgentJsonResponse(agentText);
+            if (parsed.isStructured) {
+                bubbleElement.innerHTML =
+                    buildStructuredBubble(parsed) +
+                    `<div class="bubble-meta">Agent • Just Now</div>`;
+            } else {
+                bubbleElement.querySelector(".bubble-meta").innerText = "Agent • Just Now";
             }
         }
     } catch (error) {

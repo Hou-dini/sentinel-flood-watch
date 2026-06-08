@@ -70,3 +70,12 @@ This document captures engineering lessons, technical challenges, options consid
 ## 16. Agent Prompt Guards for Missing/Unstable Tools
 * **Problem:** If a critical tool (like a database writer) fails to load or connect, the agent doesn't understand why the tool is missing. It may enter a loop calling search tools to find it or fabricate fake data (such as mock database IDs) to pass to downstream tools.
 * **Solution:** Insert strict prompt guard rules in the system instructions directing the agent to fail fast and report connection issues directly to the user if key database tools are missing or fail, rather than searching the web or guessing IDs.
+
+## 17. Client-Side JSON Rendering Robustness
+* **Problem:** Decoupling output schemas in ADK responses allows conversational freedom but requires robust client-side parsing. The original JSON parser failed to handle array responses (like lists of records from MongoDB), discarded conversational text surrounding code fences, and skipped formatting for static/non-streamed agent bubbles or missed stream end tags.
+* **Solution:** Update the Javascript client parser to:
+  1. Detect both objects and arrays (matching from first `{`/`[` to last `}`/`]`).
+  2. Extract and preserve any conversational text surrounding the JSON code block to use as the message header.
+  3. Render generic arrays and nested objects cleanly as nested key-value details tables.
+  4. Intercept the static `appendMessage` method and implement stream-end event fallbacks to guarantee correct formatting under all event sequence patterns.
+
