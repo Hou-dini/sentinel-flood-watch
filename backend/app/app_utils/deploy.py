@@ -170,8 +170,8 @@ def setup_agent_identity(client: Any, project: str, display_name: str) -> Any:
 )
 @click.option(
     "--location",
-    default="us-east1",
-    help="GCP region (defaults to us-east1)",
+    default="europe-west1",
+    help="GCP region (defaults to europe-west1)",
 )
 @click.option(
     "--display-name",
@@ -180,7 +180,7 @@ def setup_agent_identity(client: Any, project: str, display_name: str) -> Any:
 )
 @click.option(
     "--description",
-    default="Simple ReAct agent",
+    default="Sentinel floodwatch agent",
     help="Description of the agent",
 )
 @click.option(

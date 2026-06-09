@@ -16,8 +16,18 @@ class ModelArmorSafetyPlugin(BasePlugin):
         """
         super().__init__(name="model_armor_safety")
         self.template_name = template_name
-        self.client = modelarmor_v1.ModelArmorClient()
-        logging.info(f"ModelArmorSafetyPlugin initialized with template: {self.template_name}")
+        
+        # Parse location from template name (e.g., projects/PROJECT/locations/LOCATION/templates/TEMPLATE)
+        location = "europe-west1" # Fallback
+        parts = template_name.split("/")
+        if len(parts) >= 4 and parts[2] == "locations":
+            location = parts[3]
+        
+        api_endpoint = f"modelarmor.{location}.rep.googleapis.com"
+        self.client = modelarmor_v1.ModelArmorClient(
+            client_options={"api_endpoint": api_endpoint}
+        )
+        logging.info(f"ModelArmorSafetyPlugin initialized with template: {self.template_name} on endpoint: {api_endpoint}")
 
     async def before_model_callback(self, *, callback_context, llm_request: LlmRequest) -> LlmResponse | None:
         """Sanitizes the prompt prior to LLM submission."""

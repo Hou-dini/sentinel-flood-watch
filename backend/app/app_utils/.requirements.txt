@@ -1,0 +1,17 @@
+google-adk>=1.31.1,<2.0.0
+google-cloud-aiplatform[agent-engines]>=1.148.1
+google-cloud-logging>=3.15.0,<4.0.0
+google-cloud-modelarmor>=0.6.0
+google-genai>=1.73.1
+opentelemetry-instrumentation-google-genai>=0.7b0,<1.0.0
+arize-otel>=0.13.0
+openinference-instrumentation-google-adk>=0.1.15
+gcsfs>=2026.3.0
+protobuf>=6.31.1,<7.0.0
+motor>=3.7.1
+pymongo>=4.17.0
+pillow>=12.2.0
+earthengine-api>=1.7.26
+mcp>=1.27.0
+python-dotenv>=1.2.2
+pydantic>=2.13.3

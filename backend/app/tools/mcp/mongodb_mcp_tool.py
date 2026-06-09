@@ -22,10 +22,8 @@ from google.adk.tools.mcp_tool import McpToolset
 from google.adk.tools.mcp_tool.mcp_session_manager import StdioConnectionParams
 from mcp import StdioServerParameters
 
-# On production (e.g. Cloud Run / Linux container), we run the globally installed
-# mongodb-mcp-server binary directly to avoid npm registry downloads/caching latency.
 # On Windows / local development, we fallback to npx.
-is_production = os.environ.get("GOOGLE_CLOUD_PROJECT") is not None or os.name != "nt"
+is_production = os.name != "nt"
 
 command = "mongodb-mcp-server" if is_production else "npx"
 args = [] if is_production else ["-y", "mongodb-mcp-server"]

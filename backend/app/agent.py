@@ -91,7 +91,7 @@ Schema:
 root_agent = Agent(
     name="sentinel_flood_watch_agent",
     model=Gemini(
-        model="gemini-3.5-flash",
+        model=os.environ.get("AGENT_MODEL", "gemini-2.5-flash"),
         retry_options=types.HttpRetryOptions(attempts=3),
     ),
     instruction=INSTRUCTIONS,
@@ -104,7 +104,14 @@ root_agent = Agent(
     ],
 )
 
+plugins = []
+model_armor_template = os.environ.get("MODEL_ARMOR_TEMPLATE")
+if model_armor_template:
+    from app.app_utils.safety_plugin import ModelArmorSafetyPlugin
+    plugins.append(ModelArmorSafetyPlugin(template_name=model_armor_template))
+
 app = App(
     root_agent=root_agent,
-    name="sentinel_flood_watch_app",
+    name="app",
+    plugins=plugins,
 )

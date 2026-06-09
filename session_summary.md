@@ -183,3 +183,27 @@
 ### Next Steps
 - Verify end-to-end functionality of the deployed live endpoint.
 
+---
+
+## Session Date: June 9, 2026
+
+### Activities Completed
+1. **Vertex AI Agent Engine Deployment:**
+   - Successfully deployed the Sentinel Flood-Watch agent to **Vertex AI Agent Engine** in `europe-west1` using the project's `deploy.py` CLI script.
+   - Resolved three deployment blockers encountered along the way:
+     - **Wrong Python environment:** The system `PATH` resolved `python` to the Hermes agent's venv (`hermes-agent/venv`) instead of the project's `.venv`. Fixed by invoking the project venv's Python explicitly.
+     - **Windows `cp1252` Unicode encoding error:** The deploy banner's box-drawing characters and emoji crashed on Windows. Fixed by setting `PYTHONIOENCODING=utf-8`.
+     - **Missing `.requirements.txt`:** The deploy script (`deploy.py`) defaulted to `app/app_utils/.requirements.txt` for Agent Engine container dependencies, but the file did not exist. Created [.requirements.txt](file:///c:/Users/Elikplim/VS%20Code%20Projects/sentinel_flood_watch/backend/app/app_utils/.requirements.txt) with all production dependencies pinned to current versions.
+   - The deployed Agent Engine resource ID is `2697823302562349056` in project `gen-lang-client-0892878190`.
+2. **Agent Engine ID Configuration for Session & Memory Services:**
+   - Investigated the `VertexAiSessionService` and `VertexAiMemoryBankService` constructor signatures. Confirmed that `VertexAiMemoryBankService` **requires** `agent_engine_id` (raises `ValueError` if missing), while `VertexAiSessionService` accepts it optionally for proper session persistence.
+   - Updated [main.py](file:///c:/Users/Elikplim/VS%20Code%20Projects/sentinel_flood_watch/backend/app/main.py) to read `AGENT_ENGINE_ID` from the environment and pass it to both services, with a warning log if the variable is unset.
+   - Added `AGENT_ENGINE_ID=2697823302562349056` to the backend `.env` file for local development.
+3. **Deploy Script Customization:**
+   - Updated default region in `deploy.py` from `us-east1` to `europe-west1` and description from `"Simple ReAct agent"` to `"Sentinel floodwatch agent"`.
+4. **Deployment Metadata Update:**
+   - The deployment script automatically wrote the engine resource name and timestamp to [deployment_metadata.json](file:///c:/Users/Elikplim/VS%20Code%20Projects/sentinel_flood_watch/backend/deployment_metadata.json).
+
+### Next Steps
+- Set `AGENT_ENGINE_ID` environment variable in Cloud Run.
+- Verify end-to-end production functionality with persistent sessions and memory.

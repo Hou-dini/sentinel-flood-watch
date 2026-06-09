@@ -125,7 +125,7 @@ The agentic intelligence layer orchestrating tools to monitor Accra's waterways:
 * **`Agent`**: The `sentinel_flood_watch_agent` configured with detailed system instructions. It defines coordinates for sites of interest (Korle Lagoon, Odaw River, Sakumono Ramsar, Densu Delta) and runs a multi-step diagnostic workflow when prompted.
 * **`Model`**: Leverages `Gemini (gemini-3.5-flash)` as the reasoning engine.
 * **`App`**: Wraps the agent to expose operations and orchestrate configurations.
-* **`Runner`**: Executes agent sessions. In production, it dynamically connects to `VertexAiSessionService` and `VertexAiMemoryBankService` for persistent session management and long-term conversation recall; in local development, it falls back to `InMemorySessionService` and `InMemoryMemoryService`.
+* **`Runner`**: Executes agent sessions. In production, it dynamically connects to `VertexAiSessionService` and `VertexAiMemoryBankService` (both bound to the deployed Agent Engine via the `AGENT_ENGINE_ID` environment variable) for persistent session management and long-term conversation recall; in local development, it falls back to `InMemorySessionService` and `InMemoryMemoryService`.
 
 ### D. Agent Tools
 Custom functions decorated/structured to interface directly with the Gemini model:
