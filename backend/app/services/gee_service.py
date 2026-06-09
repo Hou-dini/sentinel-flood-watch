@@ -121,6 +121,24 @@ class EarthEngineService:
             base_img = ee.Image(baseline_col.first())
             curr_img = ee.Image(current_col.first())
 
+            # Extract actual acquisition dates from the selected images
+            base_date_ms = base_img.date().millis().getInfo()
+            curr_date_ms = curr_img.date().millis().getInfo()
+            baseline_acquisition_date = (
+                datetime.datetime.fromtimestamp(
+                    base_date_ms / 1000, tz=datetime.timezone.utc
+                ).strftime("%Y-%m-%d")
+                if base_date_ms
+                else dates["baseline_start"]
+            )
+            current_acquisition_date = (
+                datetime.datetime.fromtimestamp(
+                    curr_date_ms / 1000, tz=datetime.timezone.utc
+                ).strftime("%Y-%m-%d")
+                if curr_date_ms
+                else dates["current_start"]
+            )
+
             # Visual parameters for RGB
             rgb_params = {
                 "bands": ["B4", "B3", "B2"],
@@ -202,6 +220,12 @@ class EarthEngineService:
                     "curr_mean_ndvi": curr_mean_ndvi,
                     "base_mean_mndwi": base_mean_mndwi,
                     "curr_mean_mndwi": curr_mean_mndwi,
+                },
+                "dates": {
+                    "baseline_period": f"{dates['baseline_start']} to {dates['baseline_end']}",
+                    "current_period": f"{dates['current_start']} to {dates['current_end']}",
+                    "baseline_acquisition_date": baseline_acquisition_date,
+                    "current_acquisition_date": current_acquisition_date,
                 },
             }
 

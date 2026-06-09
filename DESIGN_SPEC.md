@@ -20,9 +20,13 @@ The system integrates Google Earth Engine (Sentinel-2 imagery), Google ADK (for 
 ## Tools Required
 
 ### 1. `scan_zone_tool`
-* **Purpose:** Fetch Sentinel-2 before/after images and compute indices.
+* **Purpose:** Fetch Sentinel-2 before/after images, compute indices, and determine severity.
 * **Arguments:** `latitude: float`, `longitude: float`, `site_name: str`
-* **Returns:** Dict containing URLs for Baseline RGB, Current RGB, Baseline NDVI, Current NDVI, Baseline MNDWI, and Current MNDWI.
+* **Returns:** Dict containing URLs for Baseline RGB, Current RGB, Baseline NDVI, Current NDVI, Baseline MNDWI, and Current MNDWI, plus temporal metadata (`baseline_date`, `current_date`, `baseline_period`, `current_period`), anomaly detection flags, a pre-computed `evidence_summary`, and deterministic `suggested_severity` / `suggested_status` fields.
+* **Severity Thresholds (Quantitative):**
+  - **Low:** No significant change detected (both NDVI and MNDWI change ≤ 2%).
+  - **Medium:** Moderate anomaly — max absolute change between 2% and 10%.
+  - **High:** Severe anomaly — max absolute change ≥ 10% in either NDVI or MNDWI, or mock fallback (no GEE data).
 
 ### 2. `send_alert_tool`
 * **Purpose:** Log a detected encroachment in the persistent database.
@@ -31,13 +35,16 @@ The system integrates Google Earth Engine (Sentinel-2 imagery), Google ADK (for 
 
 ### 3. `mongodb_mcp_tool`
 * **Purpose:** Interfaces with `mongodb-mcp-server` to execute raw database queries on the alerts and scans collections.
-* **Arguments:** Executes standard MCP database commands (e.g. `mongodb_find`, `mongodb_insert_one`).
+* **Arguments:** Executes standard MCP database commands (e.g. `mongodb_find`, `mongodb_insert-many`).
+* **Tool Filter:** Only `find` and `insert-many` are exposed to the agent via `tool_filter` to restrict the attack surface and prevent unintended database mutations (e.g., delete, update).
 * **Returns:** Query outputs or insertion confirmations.
 
 ## Constraints & Safety Rules
 - **No False Positives:** The agent must only flag anomalies when there is visible structural or land-clearing change.
 - **Strict Buffer Zones:** Flag constructions within 100 meters of designated waterways.
 - **GCP Location:** Ensure Vertex AI calls use the correct region.
+- **Temporal Transparency:** Every scan result includes the exact acquisition dates of the baseline and current Sentinel-2 images used for comparison, displayed on the dashboard slider labels for user verification.
+- **Deterministic Severity:** Severity classification (Low / Medium / High) is computed algorithmically from NDVI/MNDWI change magnitudes in `scan_zone_tool`, not by the LLM. The agent copies the `suggested_severity` verbatim.
 - **Fallback Capability:** If Earth Engine credentials are unavailable, seamlessly generate realistic mock indices based on Accra's real coordinate patterns to prevent code crashes during hackathon presentations.
 - **AI Application Guardrails (Model Armor):** The agent's prompts and outputs are wrapped with a Model Armor safety template to filter jailbreaks and prompt-injections. The guardrail is configured to fail-open during API timeouts and fail-closed when a safety match occurs. PII filtering is bypassed to optimize execution latency.
 

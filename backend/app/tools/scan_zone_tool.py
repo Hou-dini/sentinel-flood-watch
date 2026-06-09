@@ -55,6 +55,7 @@ async def scan_zone_tool(
         if result_data:
             urls = result_data["urls"]
             stats = result_data["stats"]
+            dates_info = result_data.get("dates", {})
 
             base_mean_ndvi = stats["base_mean_ndvi"]
             curr_mean_ndvi = stats["curr_mean_ndvi"]
@@ -79,6 +80,10 @@ async def scan_zone_tool(
 
                 evidence_summary = (
                     f"Live Earth Engine analysis completed for {site_name}. "
+                    f"Baseline image captured on {dates_info.get('baseline_acquisition_date', 'N/A')} "
+                    f"(search window: {dates_info.get('baseline_period', 'N/A')}). "
+                    f"Current image captured on {dates_info.get('current_acquisition_date', 'N/A')} "
+                    f"(search window: {dates_info.get('current_period', 'N/A')}). "
                     f"NDVI changed by {ndvi_diff * 100:+.1f}% (from {base_mean_ndvi:.3f} to {curr_mean_ndvi:.3f}), indicating vegetation changes. "
                     f"MNDWI changed by {mndwi_diff * 100:+.1f}% (from {base_mean_mndwi:.3f} to {curr_mean_mndwi:.3f}), indicating water channel alterations."
                 )
@@ -94,10 +99,43 @@ async def scan_zone_tool(
         logging.info("Using mock renderer fallback.")
         has_anomaly = True
         urls = generate_mock_satellite_images(site_name, has_encroachment=has_anomaly)
+        dates_info = {
+            "baseline_acquisition_date": "2021-03-15",
+            "current_acquisition_date": datetime.date.today().isoformat(),
+            "baseline_period": "2020-06 to 2022-01 (simulated)",
+            "current_period": "2024-06 to present (simulated)",
+        }
         evidence_summary = (
             f"Mock analysis: Detected building structures and waste dumping in the buffer zone of {site_name}. "
             f"MNDWI shows water channel narrowing by 20%. NDVI shows vegetation loss of 15%."
         )
+
+    # Determine suggested severity and status based on quantitative thresholds
+    # These thresholds are applied to the absolute magnitude of index change
+    # to provide deterministic, reproducible severity classification.
+    if has_anomaly:
+        # Calculate the maximum absolute change across both indices
+        # ndvi_diff and mndwi_diff are defined when GEE data is available;
+        # for mock fallback, default to high severity.
+        max_change_pct = 0.0
+        if gee_success and urls and not urls["baseline_rgb"].startswith("/static/"):
+            max_change_pct = max(abs(ndvi_diff), abs(mndwi_diff)) * 100
+
+        if max_change_pct >= 10.0:
+            # Severe: ≥10% absolute change in either vegetation or water index
+            suggested_severity = "High"
+        elif max_change_pct >= 2.0:
+            # Moderate: 2-10% change detected but below critical threshold
+            suggested_severity = "Medium"
+        else:
+            # Mock fallback with no computed indices defaults to High
+            suggested_severity = "High"
+        suggested_status = "Active"
+    else:
+        suggested_severity = "Low"
+        suggested_status = "No Alert Issued"
+
+    scan_timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat()
 
     # Compile response
     result = {
@@ -111,10 +149,17 @@ async def scan_zone_tool(
         "current_ndvi": urls["current_ndvi"],
         "baseline_mndwi": urls["baseline_mndwi"],
         "current_mndwi": urls["current_mndwi"],
+        "baseline_date": dates_info.get("baseline_acquisition_date", "N/A"),
+        "current_date": dates_info.get("current_acquisition_date", "N/A"),
+        "baseline_period": dates_info.get("baseline_period", "N/A"),
+        "current_period": dates_info.get("current_period", "N/A"),
         "gee_integrated": gee_success
         and (not urls["baseline_rgb"].startswith("/static/")),
         "anomaly_detected": has_anomaly,
         "evidence_summary": evidence_summary,
+        "suggested_severity": suggested_severity,
+        "suggested_status": suggested_status,
+        "scan_timestamp": scan_timestamp,
     }
 
     # Log scan in database

@@ -248,6 +248,21 @@ function selectAlert(alertId) {
 function loadScanResults(result) {
     lastScanResult = result;
     document.getElementById("current-comparison-site").innerText = result.site_name;
+
+    // Update slider labels with actual acquisition dates
+    const baselineLabel = document.getElementById("label-baseline");
+    const currentLabel = document.getElementById("label-current");
+    if (result.baseline_date && result.baseline_date !== "N/A") {
+        baselineLabel.innerText = `Baseline — ${result.baseline_date}`;
+    } else {
+        baselineLabel.innerText = "Baseline (Historical)";
+    }
+    if (result.current_date && result.current_date !== "N/A") {
+        currentLabel.innerText = `Current — ${result.current_date}`;
+    } else {
+        currentLabel.innerText = "Current (Satellite Scan)";
+    }
+
     updateComparisonImages();
 }
 

@@ -223,10 +223,36 @@
 9. **MCP Database Auto-Connection Hook:**
    - Implemented `auto_connect_mongodb_mcp` as a `before_tool_callback` on `root_agent` in [agent.py](file:///c:/Users/Elikplim/VS%20Code%20Projects/sentinel_flood_watch/backend/app/agent.py). This hook intercepts database operations, strips the prefix, and proactively calls the MCP server's `connect` tool using the server connection string from environment variables, preventing "database unreachable" errors.
 10. **Model Armor Safety Plugin Role Filtering:**
-    - Patched [safety_plugin.py](file:///c:/Users/Elikplim/VS%20Code%20Projects/sentinel_flood_watch/backend/app/app_utils/safety_plugin.py) to only extract text from contents having the role `"user"`, resolving a potential crash when handling tool calls or response segments that lack `text` parts.
+     - Patched [safety_plugin.py](file:///c:/Users/Elikplim/VS%20Code%20Projects/sentinel_flood_watch/backend/app/app_utils/safety_plugin.py) to only extract text from contents having the role `"user"`, resolving a potential crash when handling tool calls or response segments that lack `text` parts.
 11. **Comprehensive Test Validation:**
-    - Executed local tests using `pytest` and verified all 19 unit and integration tests passed successfully.
+     - Executed local tests using `pytest` and verified all 19 unit and integration tests passed successfully.
+12. **End-to-End Pipeline Verification:**
+     - Ran a live test against the deployed Cloud Run revision (`sentinel-flood-watch-00094-gm5`) confirming the full pipeline works:
+       - `scan_zone_tool` → Earth Engine analysis returned real GEE thumbnail URLs.
+       - `mongodb_insert-many` → Alert document successfully inserted (ID: `6a28545cbeba70fd69294a8a`).
+       - `send_alert_tool` → SMS dispatch invoked with correct alert ID.
+     - Confirmed zero MCP session errors on revision 94 (the `timeout=30.0` fix resolved all previous MCP initialization failures).
+13. **Temporal Metadata in Scan Results:**
+     - Added actual Sentinel-2 image acquisition date extraction to [gee_service.py](file:///c:/Users/Elikplim/VS%20Code%20Projects/sentinel_flood_watch/backend/app/services/gee_service.py) using `ee.Image.date().millis().getInfo()`, returning `baseline_acquisition_date`, `current_acquisition_date`, `baseline_period`, and `current_period`.
+     - Updated [scan_zone_tool.py](file:///c:/Users/Elikplim/VS%20Code%20Projects/sentinel_flood_watch/backend/app/tools/scan_zone_tool.py) to pass date period info through to the tool response and embed dates in the `evidence_summary` text.
+     - Updated [index.html](file:///c:/Users/Elikplim/VS%20Code%20Projects/sentinel_flood_watch/frontend/index.html) and [index.js](file:///c:/Users/Elikplim/VS%20Code%20Projects/sentinel_flood_watch/frontend/index.js) to dynamically display actual image dates on the comparison slider labels (e.g., "Baseline — 2021-06-15" / "Current — 2026-03-10").
+14. **Quantitative Severity Classification:**
+     - Replaced the arbitrary severity logic (`"Medium" if gee_success else "High"`) with deterministic thresholds based on max absolute NDVI/MNDWI percentage change:
+       - **Low**: ≤2% (no significant change)
+       - **Medium**: 2–10% (moderate anomaly)
+       - **High**: ≥10% (severe anomaly) or mock fallback
+     - The agent copies the tool's `suggested_severity` field verbatim, eliminating LLM arbitrariness.
+15. **MongoDB MCP Tool Filter:**
+     - Added `tool_filter=["find", "insert-many"]` to the `McpToolset` initialization in [mongodb_mcp_tool.py](file:///c:/Users/Elikplim/VS%20Code%20Projects/sentinel_flood_watch/backend/app/tools/mcp/mongodb_mcp_tool.py), restricting the agent's database access to read and insert operations only.
+     - Narrowed the `auto_connect_mongodb_mcp` callback in [agent.py](file:///c:/Users/Elikplim/VS%20Code%20Projects/sentinel_flood_watch/backend/app/agent.py) to only trigger for `find` and `insert-many` to match the filter.
+16. **Agent Prompt Restructuring:**
+     - Moved safety rules to the top of agent instructions (before workflow steps) as `MANDATORY SAFETY RULES (ALWAYS CHECK FIRST)` to ensure the LLM evaluates safety constraints before executing any workflow.
+     - Clarified that `agent_summary` is exclusively for the tool's `evidence_summary` — refusal text, DB errors, and all other commentary must appear as visible text before/after the JSON block.
+17. **Documentation Updates:**
+     - Updated [DESIGN_SPEC.md](file:///c:/Users/Elikplim/VS%20Code%20Projects/sentinel_flood_watch/DESIGN_SPEC.md): added severity thresholds, temporal transparency, deterministic severity, MongoDB tool filter, and updated tool descriptions.
+     - Updated [project_writeup.md](file:///c:/Users/Elikplim/VS%20Code%20Projects/sentinel_flood_watch/project_writeup.md): added deterministic severity classification, MongoDB tool filter, date-annotated slider labels, and moved SMS alerts from roadmap to implemented features.
+     - Updated [lessons_learned.md](file:///c:/Users/Elikplim/VS%20Code%20Projects/sentinel_flood_watch/lessons_learned.md): added entries #20 (Temporal Metadata) and #21 (Deterministic Severity & Tool Filtering).
 
 ### Next Steps
-- Redeploy the backend to Cloud Run to apply the MCP timeout and auto-connection hook updates.
-- Verify end-to-end production functionality with persistent sessions, memory, and MongoDB MCP tools.
+- Verify end-to-end production functionality after CI/CD deployment with the updated severity thresholds and temporal metadata.
+- Consider adding automated evaluation tests for severity classification edge cases.

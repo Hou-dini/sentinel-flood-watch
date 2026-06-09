@@ -29,6 +29,8 @@ command = "mongodb-mcp-server" if is_production else "npx"
 args = [] if is_production else ["-y", "mongodb-mcp-server"]
 
 # Configure MongoDB MCP Toolset
+# Only expose the tools the agent needs: find (query alerts) and insert-many (log alerts).
+# The 'connect' tool is called internally by the auto-connect callback and does not need to be exposed.
 mongodb_mcp_tool = McpToolset(
     connection_params=StdioConnectionParams(
         server_params=StdioServerParameters(
@@ -42,5 +44,6 @@ mongodb_mcp_tool = McpToolset(
         ),
         timeout=30.0,
     ),
-    tool_name_prefix="mongodb"
+    tool_name_prefix="mongodb",
+    tool_filter=["find", "insert-many"],
 )

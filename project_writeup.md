@@ -9,7 +9,7 @@ The system uses a **FastAPI backend** that hosts a Google ADK AI Agent utilizing
 
 A **Vanilla HTML/CSS/JS web dashboard** provides:
 - Leaflet-based interactive map displaying risk zones and alert pins.
-- Side-by-side split screen comparisons of baseline (historical) and current imagery.
+- **Side-by-side split screen comparisons** of baseline (historical) and current imagery, with **dynamic date labels** showing the exact Sentinel-2 acquisition dates for each image.
 - Visual heatmaps showing Normalized Difference Vegetation Index (NDVI) and Modified Normalized Difference Water Index (MNDWI) to highlight encroachment.
 - AI Chatbot for querying and commanding the monitoring agent.
 - **Live Analytics Bar:** Tracks and displays live statistics including the total number of active alerts, successful scans executed, and system processing success rate.
@@ -59,11 +59,13 @@ A **Vanilla HTML/CSS/JS web dashboard** provides:
 - **Vanilla CSS over Tailwind:** Vanilla CSS provides maximum speed and visual customization, fitting the responsive glassmorphic aesthetic without introducing extra build pipelines.
 - **Modular Package Refactoring:** Refactored the monolithic `tools.py` into a modular `tools/` package structure to separate tool definitions (scanning, geocoding, searching, alerting) and improve maintainability.
 - **CI/CD Environment Controls:** Configured GitHub Actions to only run unit tests that mock external GCP/GEE APIs, preventing build failures due to missing credentials on public runners.
+- **Deterministic Severity Classification:** Severity levels (Low / Medium / High) are computed algorithmically in `scan_zone_tool` based on quantitative NDVI/MNDWI change thresholds (≤2% = Low, 2–10% = Medium, ≥10% = High), eliminating LLM arbitrariness. The agent copies the tool’s `suggested_severity` verbatim.
+- **MongoDB Tool Filter:** The MCP toolset exposes only `find` and `insert-many` to the agent via `tool_filter`, restricting the attack surface and preventing unintended database mutations (delete, update).
 - **Production Persistent State Migration:** Transitioned session and long-term memory management from transient local memory (`InMemorySessionService` and `InMemoryMemoryService`) to environment-aware persistence. In production, the system dynamically binds to Vertex AI Session Service and Memory Bank Service to support serverless container scaling, while preserving local in-memory fallbacks to keep offline developer tests fast and dependency-free.
 - **Custom Security Guardrails with Model Armor:** Implemented a custom ADK safety plugin (`ModelArmorSafetyPlugin`) that intercepts LLM requests and responses. Designed a *fail-open* policy for API connection timeouts to guarantee satellite scanner availability, and a *fail-closed* policy for policy matches to protect the application from prompt-injection and jailbreak attacks. Prompt filtering is restricted to injection and jailbreaks (excluding PII scrubbing) to eliminate latency overhead for fields not present in current system inputs.
 
 ## 4. Key Features
-- **Visual Evidence Slider:** Compare NDVI/MNDWI indices dynamically.
+- **Visual Evidence Slider:** Compare NDVI/MNDWI indices dynamically with **date-annotated labels** showing the exact Sentinel-2 capture dates for baseline and current imagery.
 - **Stateful Agent Chat:** Streaming agent thoughts and actions.
 - **Accra Buffers:** Specific boundaries set for Odaw River, Korle Lagoon, Sakumono, and Densu Delta.
 - **Live Analytics Widgets:** Real-time database metrics displaying scans processed, alerts sent, and execution success rates.
@@ -72,5 +74,5 @@ A **Vanilla HTML/CSS/JS web dashboard** provides:
 - **Production Containerization:** Easy one-command local deploy utilizing Docker Compose linking FastAPI and MongoDB with volume mapping for persistence and GCP service account keys.
 
 ## 5. Future Roadmap
-- **Real-Time SMS Alerts:** Integration with Twilio to SMS NADMO coordinators.
 - **Computer Vision Model Tuning:** Train a custom YOLO model to detect roofing sheets from high-resolution imagery.
+- **Multi-Region Expansion:** Extend monitoring beyond Greater Accra to other flood-prone coastal cities in West Africa.
