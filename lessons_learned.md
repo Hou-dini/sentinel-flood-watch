@@ -82,3 +82,11 @@ This document captures engineering lessons, technical challenges, options consid
 * **Problem:** When launching the database-connected `mongodb-mcp-server` MCP toolset, the ADK runner threw `mcp.shared.exceptions.McpError: Timed out while waiting for response to ClientRequest. Waited 5.0 seconds.` during session initialization. This occurred both locally (where `npx` took time to download/cache the package) and in production Cloud Run (where database TLS handshakes and connection establishment took time).
 * **Root Cause:** By default, Google ADK's `McpToolset` uses `StdioConnectionParams` which defaults to a 5.0-second initialization timeout. If downloading a package or connecting to a remote database cluster (like MongoDB Atlas) takes longer than 5 seconds, the initialization fails.
 * **Solution:** Explicitly pass `timeout=30.0` (or greater) to `StdioConnectionParams` to give the MCP subprocess ample time to initialize Node.js, download packages, and establish remote database connections before timing out.
+
+## 19. MongoDB MCP Server Tool Naming and Namespace Prefixes
+* **Problem:** The agent failed to log encroachment alerts to MongoDB and returned a message stating that the required database tools were unreachable, despite the MCP server starting successfully.
+* **Root Cause:** Two issues prevented the agent from matching the tools:
+  1. The agent was instructed to look for and invoke `mongodb_insert_one` and `mongodb_find`. However, the official `mongodb-mcp-server` publishes `insert-many` and `find` (no `insert-one` exists).
+  2. The `McpToolset` lacked a `tool_name_prefix` configuration, registering the tools under their raw names (`find`, `insert-many`, etc.) rather than the namespaced `mongodb_` format expected by the agent prompt instructions.
+* **Solution:** Configure `tool_name_prefix="mongodb"` on `McpToolset` to register them as `mongodb_find` and `mongodb_insert-many` (hyphens are preserved by the ADK). Update the system instructions in [agent.py](file:///c:/Users/Elikplim/VS%20Code%20Projects/sentinel_flood_watch/backend/app/agent.py) directing the agent to call `mongodb_insert-many` with parameters structured as an array (`documents=[<alert_doc>]`) and look for the correct namespaced tools.
+

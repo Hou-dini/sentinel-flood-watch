@@ -41,5 +41,6 @@ mongodb_mcp_tool = McpToolset(
             },
         ),
         timeout=30.0,
-    )
+    ),
+    tool_name_prefix="mongodb"
 )

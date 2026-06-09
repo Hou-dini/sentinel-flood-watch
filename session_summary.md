@@ -217,7 +217,16 @@
 7. **Frontend GEE Imagery Discrepancy Investigation**:
    - Investigated the discrepancy where backend logs showed requests to local `/static/` mock images but the frontend successfully rendered real Google Earth Engine thumbnails.
    - Traced the behavior to [index.js](file:///c:/Users/Elikplim/VS%20Code%20Projects/sentinel_flood_watch/frontend/index.js), showing that on a `scan_zone_tool` tool-call event, the client immediately pre-loads mock `/static/` images to avoid UI slider lag. Once the scan actually completes, the backend returns the real Earth Engine URLs in the tool-response event, and the frontend updates the slider images, replacing the mock images.
+8. **MongoDB MCP Namespace Prefixes and Tool Alignment:**
+   - Configured `tool_name_prefix="mongodb"` on the MCP `McpToolset` in [mongodb_mcp_tool.py](file:///c:/Users/Elikplim/VS%20Code%20Projects/sentinel_flood_watch/backend/app/tools/mcp/mongodb_mcp_tool.py) to register database tools under the expected namespace (`mongodb_find`, `mongodb_insert-many`).
+   - Updated system instructions in [agent.py](file:///c:/Users/Elikplim/VS%20Code%20Projects/sentinel_flood_watch/backend/app/agent.py) to direct the model to call `mongodb_insert-many` (passing `documents` as an array) instead of the non-existent `mongodb_insert_one`.
+9. **MCP Database Auto-Connection Hook:**
+   - Implemented `auto_connect_mongodb_mcp` as a `before_tool_callback` on `root_agent` in [agent.py](file:///c:/Users/Elikplim/VS%20Code%20Projects/sentinel_flood_watch/backend/app/agent.py). This hook intercepts database operations, strips the prefix, and proactively calls the MCP server's `connect` tool using the server connection string from environment variables, preventing "database unreachable" errors.
+10. **Model Armor Safety Plugin Role Filtering:**
+    - Patched [safety_plugin.py](file:///c:/Users/Elikplim/VS%20Code%20Projects/sentinel_flood_watch/backend/app/app_utils/safety_plugin.py) to only extract text from contents having the role `"user"`, resolving a potential crash when handling tool calls or response segments that lack `text` parts.
+11. **Comprehensive Test Validation:**
+    - Executed local tests using `pytest` and verified all 19 unit and integration tests passed successfully.
 
 ### Next Steps
-- Redeploy the backend to Cloud Run to apply the MCP timeout update.
+- Redeploy the backend to Cloud Run to apply the MCP timeout and auto-connection hook updates.
 - Verify end-to-end production functionality with persistent sessions, memory, and MongoDB MCP tools.

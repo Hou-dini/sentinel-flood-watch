@@ -35,7 +35,7 @@ class ModelArmorSafetyPlugin(BasePlugin):
         if llm_request.contents:
             parts = []
             for content in llm_request.contents:
-                if content.parts:
+                if content.role == "user" and content.parts:
                     parts.extend([p.text for p in content.parts if p.text])
             user_prompt = "\n".join(parts)
 
