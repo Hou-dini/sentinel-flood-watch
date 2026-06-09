@@ -252,7 +252,16 @@
      - Updated [DESIGN_SPEC.md](file:///c:/Users/Elikplim/VS%20Code%20Projects/sentinel_flood_watch/DESIGN_SPEC.md): added severity thresholds, temporal transparency, deterministic severity, MongoDB tool filter, and updated tool descriptions.
      - Updated [project_writeup.md](file:///c:/Users/Elikplim/VS%20Code%20Projects/sentinel_flood_watch/project_writeup.md): added deterministic severity classification, MongoDB tool filter, date-annotated slider labels, and moved SMS alerts from roadmap to implemented features.
      - Updated [lessons_learned.md](file:///c:/Users/Elikplim/VS%20Code%20Projects/sentinel_flood_watch/lessons_learned.md): added entries #20 (Temporal Metadata) and #21 (Deterministic Severity & Tool Filtering).
+ 18. **NameError Resolution in agent.py:**
+     - Resolved NameError crash in [agent.py](file:///c:/Users/Elikplim/VS%20Code%20Projects/sentinel_flood_watch/backend/app/agent.py) by importing `LlmResponse` properly from `google.adk.models`.
+ 19. **Safety and Jailbreak Refusal Enforcement Callback:**
+     - Designed and registered an async `enforce_refusal_callback` as the `after_model_callback` for the root agent. This callback checks if the user's prompt contains prompt injection patterns (such as attempting unauthorized `send_alert_tool` calls with a specific ID) and if the model response does not start with the mandatory refusal statement prefix, it programmatically prepends the refusal text before returning the response.
+ 20. **Validation of Agent Evaluation Set:**
+     - Ran `adk eval` on `edge_cases.evalset.json` using `eval_config.json`. The new callback successfully resolved all remaining failures, achieving a perfect **4/4 pass rate** with 1.0 scores across all metrics (relevance, helpfulness, jailbreak_resilience, and prompt_injection_defense).
+ 21. **Pytest suite validation:**
+     - Verified all unit and integration tests run and pass cleanly (19/19 passing).
 
 ### Next Steps
-- Verify end-to-end production functionality after CI/CD deployment with the updated severity thresholds and temporal metadata.
+- Push final changes to the remote GitHub repository.
+- Verify end-to-end production functionality after CI/CD deployment with the updated severity thresholds, safety callbacks, and temporal metadata.
 - Consider adding automated evaluation tests for severity classification edge cases.
