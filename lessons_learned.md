@@ -78,4 +78,7 @@ This document captures engineering lessons, technical challenges, options consid
   2. Extract and preserve any conversational text surrounding the JSON code block to use as the message header.
   3. Render generic arrays and nested objects cleanly as nested key-value details tables.
   4. Intercept the static `appendMessage` method and implement stream-end event fallbacks to guarantee correct formatting under all event sequence patterns.
-
+## 18. Default MCP Session Timeout (5.0s) is Too Short for Subprocess Initialization
+* **Problem:** When launching the database-connected `mongodb-mcp-server` MCP toolset, the ADK runner threw `mcp.shared.exceptions.McpError: Timed out while waiting for response to ClientRequest. Waited 5.0 seconds.` during session initialization. This occurred both locally (where `npx` took time to download/cache the package) and in production Cloud Run (where database TLS handshakes and connection establishment took time).
+* **Root Cause:** By default, Google ADK's `McpToolset` uses `StdioConnectionParams` which defaults to a 5.0-second initialization timeout. If downloading a package or connecting to a remote database cluster (like MongoDB Atlas) takes longer than 5 seconds, the initialization fails.
+* **Solution:** Explicitly pass `timeout=30.0` (or greater) to `StdioConnectionParams` to give the MCP subprocess ample time to initialize Node.js, download packages, and establish remote database connections before timing out.

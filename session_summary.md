@@ -210,7 +210,14 @@
    - Kept `GOOGLE_CLOUD_LOCATION` set to `us-central1` (configured in both `agent.py` and the local `.env` file) as the model operation region.
    - Successfully decoupled the Agent Engine location from the model location by introducing `AGENT_ENGINE_LOCATION=europe-west1` in `.env` and [main.py](file:///c:/Users/Elikplim/VS%20Code%20Projects/sentinel_flood_watch/backend/app/main.py).
    - Configured `VertexAiSessionService` and `VertexAiMemoryBankService` to use `AGENT_ENGINE_LOCATION`, allowing cross-region Gemini calls to `us-central1` while state resources stay in `europe-west1`'s Agent Engine.
+6. **MongoDB MCP Connection Timeout Resolution**:
+   - Diagnosed an agent startup timeout issue where initializing the database-connected `mongodb-mcp-server` MCP toolset failed with a 5.0-second timeout.
+   - Updated [mongodb_mcp_tool.py](file:///c:/Users/Elikplim/VS%20Code%20Projects/sentinel_flood_watch/backend/app/tools/mcp/mongodb_mcp_tool.py) to explicitly pass `timeout=30.0` in `StdioConnectionParams` configuration, allowing the Node.js server subprocess sufficient time to start and connect to MongoDB Atlas before the timeout limit.
+   - Verified that all unit and integration tests now run and pass successfully.
+7. **Frontend GEE Imagery Discrepancy Investigation**:
+   - Investigated the discrepancy where backend logs showed requests to local `/static/` mock images but the frontend successfully rendered real Google Earth Engine thumbnails.
+   - Traced the behavior to [index.js](file:///c:/Users/Elikplim/VS%20Code%20Projects/sentinel_flood_watch/frontend/index.js), showing that on a `scan_zone_tool` tool-call event, the client immediately pre-loads mock `/static/` images to avoid UI slider lag. Once the scan actually completes, the backend returns the real Earth Engine URLs in the tool-response event, and the frontend updates the slider images, replacing the mock images.
 
 ### Next Steps
-- Set `AGENT_ENGINE_ID`, `AGENT_ENGINE_LOCATION`, and `GOOGLE_CLOUD_LOCATION` environment variables in Cloud Run.
-- Verify end-to-end production functionality with persistent sessions and memory.
+- Redeploy the backend to Cloud Run to apply the MCP timeout update.
+- Verify end-to-end production functionality with persistent sessions, memory, and MongoDB MCP tools.

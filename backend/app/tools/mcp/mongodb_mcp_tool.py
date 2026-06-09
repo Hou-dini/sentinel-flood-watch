@@ -39,6 +39,7 @@ mongodb_mcp_tool = McpToolset(
                 "MONGODB_URI": os.environ.get("MONGODB_URI", ""),
                 "MDB_MCP_CONNECTION_STRING": os.environ.get("MONGODB_URI", ""),
             },
-        )
+        ),
+        timeout=30.0,
     )
 )
