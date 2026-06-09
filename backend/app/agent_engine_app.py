@@ -36,8 +36,21 @@ class AgentEngineApp(AdkApp):
         setup_telemetry()
         super().set_up()
         logging.basicConfig(level=logging.INFO)
-        logging_client = google_cloud_logging.Client()
-        self.logger = logging_client.logger(__name__)
+        if os.environ.get("INTEGRATION_TEST") == "TRUE":
+            class MockLogger:
+                def log_struct(self, data, severity="INFO"):
+                    logging.info(f"Feedback Log (Mock): {data} [{severity}]")
+            self.logger = MockLogger()
+        else:
+            try:
+                logging_client = google_cloud_logging.Client()
+                self.logger = logging_client.logger(__name__)
+            except Exception as e:
+                logging.warning(f"Could not initialize Google Cloud Logging client: {e}. Falling back to standard logging.")
+                class StandardLogger:
+                    def log_struct(self, data, severity="INFO"):
+                        logging.info(f"Feedback Log: {data} [{severity}]")
+                self.logger = StandardLogger()
         if gemini_location:
             os.environ["GOOGLE_CLOUD_LOCATION"] = gemini_location
 

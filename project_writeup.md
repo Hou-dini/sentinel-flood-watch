@@ -3,7 +3,7 @@
 ## 1. System Description & Architecture
 Sentinel Flood-Watch is an agentic AI system designed to monitor urban waterways, floodplains, and Ramsar sites in Accra, Ghana. The system detects illegal structures and waste dumping that block drainage channels and cause severe seasonal flooding.
 
-The system uses a **FastAPI backend** that hosts a Google ADK AI Agent utilizing **Gemini 3 Flash**. The backend connects to **Google Earth Engine** to pull Sentinel-2 satellite imagery. It runs on a dual trigger:
+The system uses a **FastAPI backend** that hosts a Google ADK AI Agent utilizing **Gemini 2.5 Flash**. The backend connects to **Google Earth Engine** to pull Sentinel-2 satellite imagery. It runs on a dual trigger:
 - **On-Demand Scans:** Triggered via a web chat interface.
 - **Scheduled Scans:** Executed automatically (every 5 days) to check risk zones.
 
@@ -42,7 +42,7 @@ A **Vanilla HTML/CSS/JS web dashboard** provides:
 
 ## 2. Tech Stack
 - **AI Agent Framework:** Google ADK (Agent Development Kit)
-- **AI Model:** Gemini 3.5 Flash (`gemini-3.5-flash`)
+- **AI Model:** Gemini 2.5 Flash (`gemini-2.5-flash`)
 - **Backend Server:** FastAPI / Uvicorn (Python 3.11)
 - **Data Source:** Google Earth Engine (Sentinel-2 Harmonized Surface Reflectance: `COPERNICUS/S2_SR_HARMONIZED`)
 - **Database:** MongoDB Atlas or local persistent `mongo:6.0` service (fallback to local `alerts_db.json`)

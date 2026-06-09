@@ -39,7 +39,7 @@ except Exception:
     # If local running without default GCP auth, set placeholder to prevent startup crashes
     os.environ.setdefault("GOOGLE_CLOUD_PROJECT", "sentinel-flood-watch")
 
-os.environ.setdefault("GOOGLE_CLOUD_LOCATION", "global")
+os.environ.setdefault("GOOGLE_CLOUD_LOCATION", "us-central1")
 os.environ.setdefault("GOOGLE_GENAI_USE_VERTEXAI", "True")
 
 # Define Agent system instructions

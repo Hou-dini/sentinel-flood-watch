@@ -203,7 +203,14 @@
    - Updated default region in `deploy.py` from `us-east1` to `europe-west1` and description from `"Simple ReAct agent"` to `"Sentinel floodwatch agent"`.
 4. **Deployment Metadata Update:**
    - The deployment script automatically wrote the engine resource name and timestamp to [deployment_metadata.json](file:///c:/Users/Elikplim/VS%20Code%20Projects/sentinel_flood_watch/backend/deployment_metadata.json).
+5. **Model Verification & Region Decoupling:**
+   - Attempted upgrading the default reasoning model from `gemini-2.5-flash` to `gemini-3.5-flash` in [agent.py](file:///c:/Users/Elikplim/VS%20Code%20Projects/sentinel_flood_watch/backend/app/agent.py).
+   - Confirmed through unit tests and a custom model testing script that the current Google Cloud project (`gen-lang-client-0892878190`) does not yet have access permissions for the Gemini 3.x model family on Vertex AI (returning 404 access errors).
+   - Reverted the default model to `gemini-2.5-flash` to maintain complete functionality.
+   - Kept `GOOGLE_CLOUD_LOCATION` set to `us-central1` (configured in both `agent.py` and the local `.env` file) as the model operation region.
+   - Successfully decoupled the Agent Engine location from the model location by introducing `AGENT_ENGINE_LOCATION=europe-west1` in `.env` and [main.py](file:///c:/Users/Elikplim/VS%20Code%20Projects/sentinel_flood_watch/backend/app/main.py).
+   - Configured `VertexAiSessionService` and `VertexAiMemoryBankService` to use `AGENT_ENGINE_LOCATION`, allowing cross-region Gemini calls to `us-central1` while state resources stay in `europe-west1`'s Agent Engine.
 
 ### Next Steps
-- Set `AGENT_ENGINE_ID` environment variable in Cloud Run.
+- Set `AGENT_ENGINE_ID`, `AGENT_ENGINE_LOCATION`, and `GOOGLE_CLOUD_LOCATION` environment variables in Cloud Run.
 - Verify end-to-end production functionality with persistent sessions and memory.

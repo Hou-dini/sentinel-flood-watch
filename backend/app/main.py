@@ -46,6 +46,11 @@ async def lifespan(app: FastAPI):
             project_id = os.environ.get("GOOGLE_CLOUD_PROJECT")
             location = os.environ.get("GOOGLE_CLOUD_LOCATION", "global")
             agent_engine_id = os.environ.get("AGENT_ENGINE_ID")
+            # Agent Engine location may differ from the Gemini model location
+            # (GOOGLE_CLOUD_LOCATION defaults to 'global' for model API calls).
+            agent_engine_location = os.environ.get(
+                "AGENT_ENGINE_LOCATION", location
+            )
 
             if not agent_engine_id:
                 logging.warning(
@@ -54,10 +59,10 @@ async def lifespan(app: FastAPI):
                 )
 
             session_service = VertexAiSessionService(
-                project=project_id, location=location, agent_engine_id=agent_engine_id
+                project=project_id, location=agent_engine_location, agent_engine_id=agent_engine_id
             )
             memory_service = VertexAiMemoryBankService(
-                project=project_id, location=location, agent_engine_id=agent_engine_id
+                project=project_id, location=agent_engine_location, agent_engine_id=agent_engine_id
             )
             logging.info("Initialized production Vertex AI Session and Memory services.")
         else:
