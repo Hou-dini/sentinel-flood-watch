@@ -158,7 +158,7 @@ async def enforce_refusal_callback(callback_context, llm_response) -> LlmRespons
 root_agent = Agent(
     name="sentinel_flood_watch_agent",
     model=Gemini(
-        model=os.environ.get("AGENT_MODEL", "gemini-2.5-flash"),
+        model=os.environ.get("GOOGLE_CLOUD_MODEL", "gemini-3.1-pro-preview"),
         retry_options=types.HttpRetryOptions(attempts=3),
     ),
     instruction=INSTRUCTIONS,
