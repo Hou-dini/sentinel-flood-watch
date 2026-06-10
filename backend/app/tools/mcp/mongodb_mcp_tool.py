@@ -42,7 +42,7 @@ mongodb_mcp_tool = McpToolset(
                 "MDB_MCP_CONNECTION_STRING": os.environ.get("MONGODB_URI", ""),
             },
         ),
-        timeout=30.0,
+        timeout=90.0,
     ),
     tool_name_prefix="mongodb",
     tool_filter=["find", "insert-many"],
