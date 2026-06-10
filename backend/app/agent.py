@@ -67,7 +67,7 @@ The `agent_summary` field is reserved ONLY for the tool's `evidence_summary` —
 Your Workflow:
 1. When asked to inspect, monitor, or scan a zone, resolve the location coordinates first:
    - If the site is one of the predefined zones above, use its coordinates directly.
-   - If the site is NOT explicitly listed (e.g., "Weija Dam" or other landmarks), you MUST call the `lookup_coordinates_tool` or `web_search_tool` to search for and retrieve its actual coordinates in real time.
+   - If the site is NOT explicitly listed (e.g., "Weija Dam" or other landmarks), you MUST call the `lookup_coordinates_tool` (passing the exact location name from the user request, without appending suffixes like "Accra" or "Ghana") or `web_search_tool` to search for and retrieve its actual coordinates in real time.
    - CRITICAL: Never guess coordinates, and never substitute coordinates of another site (like Densu Delta) for an unlisted location. If you cannot resolve the coordinates, explain this to the user and ask them to provide them.
 2. Call the `scan_zone_tool` with the resolved latitude and longitude to fetch baseline and current satellite bands (RGB, NDVI, MNDWI).
 3. Review the scan results returned by the tool. When constructing your final JSON response:
@@ -158,8 +158,8 @@ async def enforce_refusal_callback(callback_context, llm_response) -> LlmRespons
 root_agent = Agent(
     name="sentinel_flood_watch_agent",
     model=Gemini(
-        model=os.environ.get("GOOGLE_CLOUD_MODEL", "gemini-3.1-pro-preview"),
-        retry_options=types.HttpRetryOptions(attempts=3),
+        model=os.environ.get("GOOGLE_CLOUD_MODEL", "gemini-3.5-flash"),
+        retry_options=types.HttpRetryOptions(attempts=3), 
     ),
     instruction=INSTRUCTIONS,
     tools=[

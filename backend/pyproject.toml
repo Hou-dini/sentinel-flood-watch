@@ -1,7 +1,7 @@
 [project]
 name = "backend"
 version = "0.1.0"
-description = ""
+description = "An AI system that proactively monitors Accra's ecological sites using remote sensing data and advanced analytics, and alerts authorities and stakeholders to potential environmental threats, including illegal construction and flooding, through an intelligent alerting system."
 authors = [
     {name = "Elikplim Kudowor", email = "elinaruto5656@gmail.com"},
 ]

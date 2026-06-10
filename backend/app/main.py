@@ -6,6 +6,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 import json
+import hashlib
+
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -147,7 +149,7 @@ class ScanRequest(BaseModel):
 class ChatRequest(BaseModel):
     message: str
     session_id: str | None = "default_session"
-    user_id: str | None = "default_user"
+    user_id: str | None = None
 
 
 # Endpoints
@@ -189,7 +191,18 @@ async def scan_zone(request: ScanRequest):
 async def chat_stream(request: ChatRequest, fastapi_request: Request):
     """Streams the ADK AI Agent's reasoning, tool executions, and final replies using SSE."""
     session_id = request.session_id or "default_session"
-    user_id = request.user_id or "default_user"
+    
+    # Resolve client IP address (handling proxy header X-Forwarded-For if behind a proxy)
+    x_forwarded_for = fastapi_request.headers.get("X-Forwarded-For")
+    if x_forwarded_for:
+        client_ip = x_forwarded_for.split(",")[0].strip()
+    else:
+        client_ip = fastapi_request.client.host if fastapi_request.client else "127.0.0.1"
+        
+    salt = os.environ.get("IP_SALT", "sentinel_secure_salt_2026")
+    user_id = hashlib.sha256(f"{client_ip}:{salt}".encode("utf-8")).hexdigest()[:16]
+    logging.info(f"Resolved client IP {client_ip} to user_id: {user_id}")
+    
     runner = fastapi_request.app.state.runner
     agent_service = AgentService(runner)
 

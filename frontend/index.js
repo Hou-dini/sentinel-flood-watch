@@ -1,6 +1,22 @@
 // API Endpoint configuration
 const API_BASE_URL = window.location.origin;
 
+// Initialize unique Session ID using sessionStorage (persists across refresh in same tab)
+let sessionId = sessionStorage.getItem("sentinel_session_id");
+if (!sessionId) {
+    sessionId = generateUUID();
+    sessionStorage.setItem("sentinel_session_id", sessionId);
+}
+
+function generateUUID() {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        const r = Math.random() * 16 | 0;
+        const v = c === 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+    });
+}
+
+
 // Accra sites database coordinates
 const RISK_ZONES = {
     "korle lagoon": { lat: 5.5344, lon: -0.2197, name: "Korle Lagoon / Odaw Mouth", color: "#ff4b5c", zoom: 14 },
@@ -547,8 +563,7 @@ async function executeAgentChat(messageText) {
             },
             body: JSON.stringify({
                 message: messageText,
-                session_id: "be592cf8",
-                user_id: "elikplim"
+                session_id: sessionId
             })
         });
 

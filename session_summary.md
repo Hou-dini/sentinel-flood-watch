@@ -265,3 +265,31 @@
 - Push final changes to the remote GitHub repository.
 - Verify end-to-end production functionality after CI/CD deployment with the updated severity thresholds, safety callbacks, and temporal metadata.
 - Consider adding automated evaluation tests for severity classification edge cases.
+
+---
+
+## Session Date: June 10, 2026
+
+### Activities Completed
+1. **Server-Side IP Hashing for Unique Users:**
+   - Refactored `/api/v1/chat` in [main.py](file:///C:/Users/Elikplim/VS%20Code%20Projects/sentinel_flood_watch/backend/app/main.py) to resolve client IP addresses from the `X-Forwarded-For` header (supporting proxied environments like Cloud Run) with a fallback to `fastapi_request.client.host`.
+   - Salted and hashed the IP using SHA-256 and a server-side `IP_SALT` configuration, dynamically generating a unique 16-character `user_id` to identify and persist user state securely without signup.
+2. **Client-Side Session Storage for Unique Sessions:**
+   - Programmed [index.js](file:///C:/Users/Elikplim/VS%20Code%20Projects/sentinel_flood_watch/frontend/index.js) to dynamically generate unique UUIDs on load and store them in `sessionStorage` (persisting across page refreshes in the same tab but unique per browser tab).
+   - Refactored the `/api/v1/chat` POST request body payload to submit the dynamic `sessionId` to the backend.
+3. **Environment & Security Configurations:**
+   - Added `IP_SALT` configuration templates to the root and backend [.env.example](file:///C:/Users/Elikplim/VS%20Code%20Projects/sentinel_flood_watch/.env.example) and [backend/.env.example](file:///C:/Users/Elikplim/VS%20Code%20Projects/sentinel_flood_watch/backend/.env.example) files, and configured a randomized secure salt in the active backend [.env](file:///C:/Users/Elikplim/VS%20Code%20Projects/sentinel_flood_watch/backend/.env) file.
+4. **Trajectory & Workflow Refinement:**
+   - Modified agent instructions in [agent.py](file:///C:/Users/Elikplim/VS%20Code%20Projects/sentinel_flood_watch/backend/app/agent.py) to instruct the model to pass the exact location search query to `lookup_coordinates_tool` without adding suffixes (like Accra, Ghana), preventing evaluation trajectory matching failures.
+5. **Model & Location Alignment:**
+   - Aligned `GOOGLE_CLOUD_LOCATION=us-central1` and `GOOGLE_CLOUD_MODEL=gemini-2.5-flash` in the active environment, resolving Vertex AI 404 Model Not Found errors on evaluation metrics that utilize LLM-as-judge.
+6. **Comprehensive Unit & Integration Test Suites:**
+   - Created [test_endpoints.py](file:///C:/Users/Elikplim/VS%20Code%20Projects/sentinel_flood_watch/backend/tests/unit/test_endpoints.py) to test IP extraction and hashing logic using FastAPI's `TestClient`.
+   - Verified that all unit and integration tests run and pass successfully (**20/20 tests passing**).
+   - Executed `adk eval` on the edge cases dataset and verified a **perfect 4/4 pass rate (100% score)** across all criteria (trajectory matching, hallucinations, safety, and response quality).
+
+### Next Steps
+- Verify the automated CI/CD pipeline deploys the latest IP-hashing telemetry and session UUIDs to Cloud Run.
+- Test production log outputs in Cloud Run to confirm client IPs resolve correctly through container routing.
+- Implement automated regression testing for Earth Engine rolling image dates and severe classification thresholds.
+

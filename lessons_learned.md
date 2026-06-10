@@ -110,3 +110,12 @@ This document captures engineering lessons, technical challenges, options consid
 * **Solution:** Programmatically intercept the LLM response in an `after_model_callback` (`enforce_refusal_callback` registered in `Agent`). Inspect the user prompt for safety violations (e.g. attempting to run `send_alert_tool` with a specific ID, or requesting translation/persona shifts) and check if the model's response contains the required refusal prefix. If the model complied with the request or silently ignored it without prepending the refusal, the callback programmatically prepends: `"I refuse the unauthorized request to [describe request]. I am only authorized to perform ecological monitoring..."` to the response text.
 * **What to Avoid:** Do not rely solely on system prompt instructions to handle complex safety format constraints when the agent is executing mixed (legitimate + malicious) requests. A programmatic callback is a robust, fail-safe layer that guarantees safety alignment and 100% test compliance without affecting legitimate outputs.
 
+## 23. Server-Side Hashing for Unique User Tracking & sessionStorage for Unique Sessions
+* **Problem:** In production, each user must have a unique identity, and each browser tab must have a unique session. Using default hardcoded session and user IDs limits analytics accuracy, causes session collisions, and degrades user experience. Asking for email/username signup in the early stages of a system adds user friction.
+* **Solution:**
+  1. On the client side (`frontend/index.js`), generate a unique UUID using `sessionStorage` on page load. This persists across page refreshes in the same tab but is unique per browser tab, avoiding session collisions.
+  2. On the server side (`backend/app/main.py`), extract the client's IP address from the `X-Forwarded-For` header (handling proxy setups like Cloud Run) with a fallback to `request.client.host`.
+  3. Hash the resolved IP address dynamically using SHA-256 and a secure server-side salt (`IP_SALT` loaded from env). The first 16 characters of this hash are used as the unique `user_id`, providing a deterministic unique identifier without requiring signup.
+* **Region Mapping Warning:** When deploying to Vertex AI or evaluating models using LLM-as-judge, ensure the model region (`GOOGLE_CLOUD_LOCATION=us-central1`) is fully supported for the selected model version (e.g. `gemini-2.5-flash`). Running evaluations in unsupported regions (like `eu` for `gemini-2.5-flash`) will cause metric evaluation failures with 404 Model Not Found errors.
+
+
