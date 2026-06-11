@@ -322,12 +322,15 @@
    - Created `backend/app/agent/__init__.py` to cleanly expose the `root_agent` and `app` objects from the new module package structure.
    - Cleaned up the obsolete `backend/app/agent.py` file to prevent import conflicts.
    - Verified that all unit and integration tests continue to pass successfully (20/20 tests passing).
+7. **Automated Scheduled Monitoring Feature:**
+   - Created [SchedulingService](file:///C:/Users/Elikplim/VS%20Code%20Projects/sentinel_flood_watch/backend/app/services/scheduling_service.py) to encapsulate Accra's high-risk coordinates, the scheduled scan execution logic via [AgentService](file:///C:/Users/Elikplim/VS%20Code%20Projects/sentinel_flood_watch/backend/app/services/agent_service.py), and the local lifespan scheduling loop.
+   - Registered and exported `SchedulingService` in the services package [__init__.py](file:///C:/Users/Elikplim/VS%20Code%20Projects/sentinel_flood_watch/backend/app/services/__init__.py).
+   - Refactored [main.py](file:///C:/Users/Elikplim/VS%20Code%20Projects/sentinel_flood_watch/backend/app/main.py) to instantiate the service inside lifespan hooks, register the local background scheduler (when enabled), and expose the webhook endpoint `POST /api/v1/jobs/scan`.
+   - Secured the endpoint using `X-Job-Key` API header validation, enqueuing executions asynchronously in FastAPI's `BackgroundTasks` queue to prevent HTTP connection timeouts.
+   - Created [test_scheduling_service.py](file:///C:/Users/Elikplim/VS%20Code%20Projects/sentinel_flood_watch/backend/tests/unit/test_scheduling_service.py) covering mock run loops and authorization cases.
+   - Appended `JOB_API_KEY`, `ENABLE_LOCAL_SCHEDULER`, and `LOCAL_SCHEDULER_INTERVAL_SECONDS` configuration templates to [backend/.env.example](file:///C:/Users/Elikplim/VS%20Code%20Projects/sentinel_flood_watch/backend/.env.example) and the root [.env.example](file:///C:/Users/Elikplim/VS%20Code%20Projects/sentinel_flood_watch/.env.example).
+   - Configured active backend [.env](file:///C:/Users/Elikplim/VS%20Code%20Projects/sentinel_flood_watch/backend/.env) with local development scheduling parameters, fixed a `NameError` in `main.py` by importing `datetime`, and verified all 22 tests pass successfully.
 
 ### Next Steps
-- Push changes to the remote repository to trigger the automated CI/CD pipeline deployment to Cloud Run.
-- Verify end-to-end functionality of the deployed production service running `gemini-3.5-flash` in the `eu` location.
-
-- Continue to monitor real-time GEE satellite analysis and database logs in the cloud environment.
-
-
-
+- Push verified scheduling implementation to the remote GitHub repository.
+- Verify containerized scheduled job execution on Google Cloud Scheduler after deployment.

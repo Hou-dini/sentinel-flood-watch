@@ -1,3 +1,4 @@
+import datetime
 import logging
 import os
 from contextlib import asynccontextmanager
@@ -9,7 +10,7 @@ import json
 import hashlib
 
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, BackgroundTasks, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
@@ -98,10 +99,30 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logging.error(f"Database connection error during startup: {e}")
 
+    # Initialize Scheduling Service
+    try:
+        if app.state.runner:
+            from app.services.agent_service import AgentService
+            from app.services.scheduling_service import SchedulingService
+
+            agent_service = AgentService(app.state.runner)
+            scheduling_service = SchedulingService(app.state.runner, agent_service)
+            app.state.scheduling_service = scheduling_service
+            scheduling_service.start_local_scheduler()
+            logging.info("Scheduling service started successfully.")
+        else:
+            app.state.scheduling_service = None
+            logging.warning("Runner not initialized. Scheduling service skipped.")
+    except Exception as e:
+        logging.error(f"Failed to initialize scheduling service: {e}")
+        app.state.scheduling_service = None
+
     yield
 
     # Cleanup resources upon shutdown
     try:
+        if hasattr(app.state, "scheduling_service") and app.state.scheduling_service:
+            app.state.scheduling_service.stop_local_scheduler()
         db_service.disconnect()
         logging.info("Database service disconnected successfully.")
     except Exception as e:
@@ -222,6 +243,48 @@ async def chat_stream(request: ChatRequest, fastapi_request: Request):
             yield f"data: {json.dumps(err_chunk)}\n\n"
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+
+# Scheduled Scan Webhook Endpoint for Cloud Scheduler
+@app.post("/api/v1/jobs/scan")
+async def trigger_scheduled_scan(
+    background_tasks: BackgroundTasks,
+    x_job_key: str | None = Header(default=None, alias="X-Job-Key"),
+):
+    """Secure webhook endpoint to trigger automated monitoring scan of high-risk zones."""
+    job_api_key = os.environ.get("JOB_API_KEY")
+    is_prod = os.environ.get("ENV") == "production" or "GOOGLE_CLOUD_PROJECT" in os.environ
+
+    if is_prod and not job_api_key:
+        logging.error("Security violation: JOB_API_KEY is not configured in production.")
+        raise HTTPException(
+            status_code=500,
+            detail="Server configuration error: JOB_API_KEY is unconfigured.",
+        )
+
+    expected_key = job_api_key if job_api_key else "sentinel_dev_job_key"
+
+    if not x_job_key or x_job_key != expected_key:
+        logging.warning("Unauthorized access attempt to scheduled scan endpoint.")
+        raise HTTPException(
+            status_code=401,
+            detail="Unauthorized: Invalid or missing X-Job-Key",
+        )
+
+    if not app.state.scheduling_service:
+        raise HTTPException(
+            status_code=503,
+            detail="Scheduling service is not initialized on this instance.",
+        )
+
+    # Enqueue the scheduled scan execution as a background task to prevent timeouts
+    background_tasks.add_task(app.state.scheduling_service.run_scheduled_scan)
+
+    return {
+        "status": "accepted",
+        "message": "Scheduled automated scan started in background.",
+        "timestamp": datetime.datetime.utcnow().isoformat() + "Z",
+    }
 
 
 # Root Endpoint
