@@ -68,7 +68,7 @@ async def test_scheduling_service_run_loops(mock_runner, mock_agent_service) -> 
             assert "latitude" in called_kwargs["prompt"]
             assert zone["name"] in called_kwargs["prompt"]
             assert called_kwargs["user_id"] == "system_scheduler"
-            assert called_kwargs["session_id"].startswith("scheduled_run_")
+            assert called_kwargs["session_id"].startswith("scheduled-run-")
 
 
 def test_job_scan_endpoint_auth() -> None:

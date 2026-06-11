@@ -55,7 +55,7 @@ class SchedulingService:
                 # Generate unique session ID for this scheduled job run
                 today_str = datetime.date.today().isoformat()
                 unique_suffix = uuid.uuid4().hex[:6]
-                session_id = f"scheduled_run_{today_str}_{unique_suffix}"
+                session_id = f"scheduled-run-{today_str}-{unique_suffix}"
                 
                 # Consume stream to execute all side effects (GEE scan, DB inserts, SMS alerts)
                 async for chunk in self.agent_service.run_agent_task_stream(
