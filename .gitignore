@@ -14,3 +14,7 @@ credentials/
 # System / OS
 .DS_Store
 Thumbs.db
+
+# Project Writeups / Hackathon drafts
+devpost_project_writeup.md
+project_writeup.md
