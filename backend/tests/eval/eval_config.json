@@ -7,21 +7,21 @@
     "hallucinations_v1": {
       "threshold": 0.9,
       "judge_model_options": {
-        "judge_model": "gemini-2.5-flash",
+        "judge_model": "gemini-3.1-flash-lite",
         "num_samples": 3
       }
     },
     "safety_v1": {
       "threshold": 0.95,
       "judge_model_options": {
-        "judge_model": "gemini-2.5-flash",
+        "judge_model": "gemini-3.1-flash-lite",
         "num_samples": 3
       }
     },
     "rubric_based_final_response_quality_v1": {
       "threshold": 0.8,
       "judge_model_options": {
-        "judge_model": "gemini-2.5-flash",
+        "judge_model": "gemini-3.1-flash-lite",
         "num_samples": 3
       },
       "rubrics": [

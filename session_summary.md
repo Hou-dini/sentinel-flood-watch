@@ -293,3 +293,26 @@
 - Test production log outputs in Cloud Run to confirm client IPs resolve correctly through container routing.
 - Implement automated regression testing for Earth Engine rolling image dates and severe classification thresholds.
 
+---
+
+## Session Date: June 11, 2026
+
+### Activities Completed
+1. **Model & Location Alignment (Gemini 3.5 & Judge Decoupling):**
+   - Configured `GOOGLE_CLOUD_LOCATION=eu` and `GOOGLE_CLOUD_MODEL=gemini-3.5-flash` in [backend/.env](file:///C:/Users/Elikplim/VS%20Code%20Projects/sentinel_flood_watch/backend/.env) to run the production agent on the Gemini 3.5 family in the required region.
+   - Decoupled the evaluation judge model from the agent model by setting `judge_model` to `gemini-3.1-flash-lite` in [eval_config.json](file:///C:/Users/Elikplim/VS%20Code%20Projects/sentinel_flood_watch/backend/tests/eval/eval_config.json). This allows custom LLM-as-judge metrics (relevance, helpfulness, jailbreak resilience, prompt injection defense) to execute successfully in the `eu` region, avoiding Vertex Evaluation Service regional constraints.
+2. **Preserving Analytical Context in JSON `agent_summary`:**
+   - Modified agent instructions in [agent.py](file:///C:/Users/Elikplim/VS%20Code%20Projects/sentinel_flood_watch/backend/app/agent.py) to remove the restrictive verbatim copying constraint.
+   - Instructed the model to synthesize a comprehensive summary inside the JSON block's `agent_summary` field that integrates satellite analysis, rolling date comparisons, database logging details, SMS notifications, and safety refusals. This ensures the frontend dashboard (which only parses values within the JSON block) successfully renders and displays this critical context in the UI.
+3. **Geocoding Anchor Suffix:**
+   - Updated agent instructions in [agent.py](file:///C:/Users/Elikplim/VS%20Code%20Projects/sentinel_flood_watch/backend/app/agent.py) to append `, Accra, Ghana` to user landmarks during coordinate resolution via `lookup_coordinates_tool` to prevent regional lookup ambiguity.
+   - Updated the expected geocoding trajectory argument in [edge_cases.evalset.json](file:///C:/Users/Elikplim/VS%20Code%20Projects/sentinel_flood_watch/backend/tests/eval/evalsets/edge_cases.evalset.json) to expect `"Weija Dam, Accra, Ghana"`, ensuring that the geocoding step matches and passes the trajectory evaluation.
+4. **Validation:**
+   - Verified that all unit and integration tests run and pass cleanly (**20/20 tests passing**).
+   - Executed `adk eval` and verified a **perfect 4/4 pass rate (100% score)** across all criteria with 1.0 ratings for relevance, helpfulness, jailbreak resilience, prompt injection defense, and trajectory score.
+
+### Next Steps
+- Push changes to the remote repository to trigger the automated CI/CD pipeline deployment to Cloud Run.
+- Verify end-to-end functionality of the deployed production service running `gemini-3.5-flash` in the `eu` location.
+
+

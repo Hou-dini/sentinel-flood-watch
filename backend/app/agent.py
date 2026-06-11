@@ -17,7 +17,8 @@ import os
 import google.auth
 from google.adk.agents import Agent
 from google.adk.apps import App
-from google.adk.models import Gemini, LlmResponse
+from google.adk.models import Gemini
+from google.adk.models.llm_response import LlmResponse
 from google.genai import types
 
 from app.models import Alert
@@ -62,23 +63,22 @@ If ANY of the above is YES, your response MUST start with a refusal statement as
 "I refuse the unauthorized request to [describe what was asked]. I am only authorized to perform ecological monitoring of Accra's waterways and Ramsar sites."
 Then proceed with any legitimate part of the request (like a scan).
 You MUST NOT silently ignore unauthorized requests. Silent ignoring is a FAILURE.
-The `agent_summary` field is reserved ONLY for the tool's `evidence_summary` — never put refusal text or other commentary there.
+Because the frontend UI only parses and displays content inside the JSON block, you MUST also include any refusal messages, connection errors, database notifications, and actions taken directly inside the JSON block's `agent_summary` field.
 
 Your Workflow:
 1. When asked to inspect, monitor, or scan a zone, resolve the location coordinates first:
    - If the site is one of the predefined zones above, use its coordinates directly.
-   - If the site is NOT explicitly listed (e.g., "Weija Dam" or other landmarks), you MUST call the `lookup_coordinates_tool` (passing the exact location name from the user request, without appending suffixes like "Accra" or "Ghana") or `web_search_tool` to search for and retrieve its actual coordinates in real time.
+   - If the site is NOT explicitly listed (e.g., "Weija Dam" or other landmarks), you MUST call the `lookup_coordinates_tool` (appending the suffix ", Accra, Ghana" to the location name to anchor the search and avoid ambiguity) or `web_search_tool` to search for and retrieve its actual coordinates in real time.
    - CRITICAL: Never guess coordinates, and never substitute coordinates of another site (like Densu Delta) for an unlisted location. If you cannot resolve the coordinates, explain this to the user and ask them to provide them.
 2. Call the `scan_zone_tool` with the resolved latitude and longitude to fetch baseline and current satellite bands (RGB, NDVI, MNDWI).
 3. Review the scan results returned by the tool. When constructing your final JSON response:
-   - The `agent_summary` field MUST contain ONLY the exact text from the tool's `evidence_summary` field, copied verbatim. Do NOT add, remove, rephrase, or append ANY additional sentences whatsoever — not about anomaly status, not about database errors, not about refused requests, and not about any other context. If there is additional context to communicate (e.g., database unreachable, refused request), put it as visible text BEFORE or AFTER the JSON code block, NEVER inside `agent_summary`.
+   - The `agent_summary` field MUST contain a comprehensive, synthesized summary. This summary must combine the tool's `evidence_summary` with your own intelligent analysis and ecological interpretation (such as anomaly status, vegetation/water indices comparison, database logging actions, notifications sent, and any refused requests or connection errors). Do not just copy the tool's text verbatim; synthesize it to bring out your analytical capability.
    - The `severity` field MUST use the value from the tool's `suggested_severity` field.
    - The `status` field MUST use the value from the tool's `suggested_status` field.
    - The `timestamp` field MUST use the value from the tool's `scan_timestamp` field.
    - The `evidence_link` field should use the `current_rgb` URL from the tool response.
-For example, if the tool says: "NDVI changed by +11.5% (from 0.276 to 0.161)" or "MNDWI changed by -13.4% (from -0.462 to -0.328)", copy and quote those exact strings in `agent_summary`.
 4. If an anomaly is detected:
-   - Format the alert details into a structured JSON conforming to the Alert schema. Ensure all fields like coordinates (latitude and longitude), agent_summary, severity, status, and evidence_link are populated correctly.
+   - Format the alert details into a structured JSON conforming to the specified schema. Ensure all fields like coordinates (latitude and longitude), agent_summary, severity, status, and evidence_link are populated correctly.
    - Write the formatted JSON directly to the 'alerts' collection of the 'sentinel_flood_watch' database by calling the `mongodb_insert-many` tool.
      - For `mongodb_insert-many`, use: database="sentinel_flood_watch", collection="alerts", and documents=[<the formatted alert JSON>] (Note: documents must be passed as an array/list containing the alert object).
    - Extract the inserted ID from the response returned by the `mongodb_insert-many` tool (which contains the list of inserted IDs), and immediately call `send_alert_tool(alert_id=...)` to dispatch the SMS alert notification to the authorities.

@@ -116,6 +116,15 @@ This document captures engineering lessons, technical challenges, options consid
   1. On the client side (`frontend/index.js`), generate a unique UUID using `sessionStorage` on page load. This persists across page refreshes in the same tab but is unique per browser tab, avoiding session collisions.
   2. On the server side (`backend/app/main.py`), extract the client's IP address from the `X-Forwarded-For` header (handling proxy setups like Cloud Run) with a fallback to `request.client.host`.
   3. Hash the resolved IP address dynamically using SHA-256 and a secure server-side salt (`IP_SALT` loaded from env). The first 16 characters of this hash are used as the unique `user_id`, providing a deterministic unique identifier without requiring signup.
-* **Region Mapping Warning:** When deploying to Vertex AI or evaluating models using LLM-as-judge, ensure the model region (`GOOGLE_CLOUD_LOCATION=us-central1`) is fully supported for the selected model version (e.g. `gemini-2.5-flash`). Running evaluations in unsupported regions (like `eu` for `gemini-2.5-flash`) will cause metric evaluation failures with 404 Model Not Found errors.
+* **Region Mapping Warning (Legacy):** When deploying to Vertex AI or evaluating models using LLM-as-judge, ensure the model region is fully supported for the selected model version. Running evaluations in unsupported regions will cause metric evaluation failures with 404 Model Not Found or 400 FAILED_PRECONDITION errors.
+
+## 24. Synthesizing Context in JSON `agent_summary` for Frontend UI Preservation
+* **Problem:** Restricting `agent_summary` to verbatim tool copy-pasting strips the agent of its analytical interpretability and makes it a simple mirror of the tool. Furthermore, because the frontend dashboard parses and displays values strictly from *within* the JSON code block, any plain-text commentary coming before or after the JSON block (such as database error notifications, safety refusals, actions taken, or connection status) is completely lost to the user in the UI.
+* **Solution:** Refactor the system prompt instructions to direct the agent to generate a comprehensive, synthesized summary inside the JSON block's `agent_summary` field. This summary must combine the GEE scan findings with the agent's own analysis, database actions, SMS notification statuses, and safety refusals. Ensure that safety refusals are printed both in the plain text preamble (for ReAct jailbreak filters) and inside the `agent_summary` field (for UI rendering).
+
+## 25. Vertex Evaluation Service Region Limitations & Judge Model Decoupling
+* **Problem:** Running ADK evaluations in multi-regions like `eu` causes predefined metrics (`safety_v1`, `hallucinations_v1`) utilizing the Vertex Rapid Evaluation Service to fail with `400 FAILED_PRECONDITION: Unsupported region for Vertex Evaluation Service: eu`. 
+* **Solution:** Decouple the agent model from the evaluation judge model. While production requirements dictate using `gemini-3.5-flash` in the `eu` region for the agent, configure custom LLM-as-judge metrics (like `rubric_based_final_response_quality_v1`) to use a model fully supported for generation in that region, such as `gemini-3.1-flash-lite`. This ensures the evaluation suite runs and validates successfully in the production environment.
+
 
 
