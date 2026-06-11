@@ -115,12 +115,14 @@ async def auto_connect_mongodb_mcp(tool, args, tool_context) -> dict | None:
         from app.tools.mcp.mongodb_mcp_tool import mongodb_mcp_tool
         
         session = await mongodb_mcp_tool._mcp_session_manager.create_session()
-        try:
-            mongodb_uri = os.environ.get("MONGODB_URI", "")
-            print(f"Auto-connecting MongoDB MCP server to {mongodb_uri} before running {tool_name}...", flush=True)
-            await session.call_tool("connect", arguments={"connectionStringOrClusterName": mongodb_uri})
-        except Exception as e:
-            print(f"Failed to auto-connect MongoDB MCP: {e}", flush=True)
+        if not getattr(session, "_mongodb_connected", False):
+            try:
+                mongodb_uri = os.environ.get("MONGODB_URI", "")
+                print(f"Auto-connecting MongoDB MCP server to {mongodb_uri} before running {tool_name}...", flush=True)
+                await session.call_tool("connect", arguments={"connectionStringOrClusterName": mongodb_uri})
+                session._mongodb_connected = True
+            except Exception as e:
+                print(f"Failed to auto-connect MongoDB MCP: {e}", flush=True)
     return None
 
 

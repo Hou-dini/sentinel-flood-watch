@@ -44,12 +44,13 @@ class DatabaseService:
 
         if self.mongo_uri:
             try:
+                max_pool_size = int(os.environ.get("MONGODB_MAX_POOL_SIZE", "5"))
                 self.client = AsyncIOMotorClient(
-                    self.mongo_uri, serverSelectionTimeoutMS=2000
+                    self.mongo_uri, serverSelectionTimeoutMS=2000, maxPoolSize=max_pool_size
                 )
                 self.db = self.client[self.db_name]
                 self.use_local_json = False
-                logging.info("Connected to MongoDB Atlas successfully.")
+                logging.info(f"Connected to MongoDB Atlas successfully with maxPoolSize={max_pool_size}.")
                 self._initialized = True
                 return
             except Exception as e:
@@ -130,10 +131,13 @@ class DatabaseService:
             try:
                 cursor = self.db.alerts.find()
                 async for doc in cursor:
-                    doc["id"] = str(doc.pop("_id"))
-                    # Enforce validation
-                    alert = Alert(**doc)
-                    results.append(alert.model_dump())
+                    try:
+                        doc["id"] = str(doc.pop("_id"))
+                        # Enforce validation
+                        alert = Alert(**doc)
+                        results.append(alert.model_dump())
+                    except Exception as ve:
+                        logging.warning(f"Skipping invalid MongoDB alert document: {ve}")
                 if query_str:
                     query_str = query_str.lower()
                     results = [
@@ -156,11 +160,14 @@ class DatabaseService:
                 alerts = json.load(f)
                 validated_alerts = []
                 for alert in alerts:
-                    if "_id" in alert:
-                        alert["id"] = str(alert.pop("_id"))
-                    # Enforce validation
-                    v_alert = Alert(**alert)
-                    validated_alerts.append(v_alert.model_dump())
+                    try:
+                        if "_id" in alert:
+                            alert["id"] = str(alert.pop("_id"))
+                        # Enforce validation
+                        v_alert = Alert(**alert)
+                        validated_alerts.append(v_alert.model_dump())
+                    except Exception as ve:
+                        logging.warning(f"Skipping invalid local alert document: {ve}")
                 if query_str:
                     query_str = query_str.lower()
                     validated_alerts = [

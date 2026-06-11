@@ -18,6 +18,15 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# Restrict MongoDB connection pool size globally to avoid exceeding Atlas M0 limits
+mongodb_uri = os.environ.get("MONGODB_URI", "")
+if mongodb_uri:
+    max_pool_size = os.environ.get("MONGODB_MAX_POOL_SIZE", "5")
+    if "maxPoolSize=" not in mongodb_uri:
+        separator = "&" if "?" in mongodb_uri else "?"
+        mongodb_uri = f"{mongodb_uri}{separator}maxPoolSize={max_pool_size}"
+        os.environ["MONGODB_URI"] = mongodb_uri
+
 from google.adk.tools.mcp_tool import McpToolset
 from google.adk.tools.mcp_tool.mcp_session_manager import StdioConnectionParams
 from mcp import StdioServerParameters

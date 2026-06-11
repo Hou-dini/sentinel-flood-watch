@@ -6,6 +6,15 @@ from contextlib import asynccontextmanager
 from dotenv import load_dotenv
 
 load_dotenv()
+
+# Restrict MongoDB connection pool size globally to avoid exceeding Atlas M0 limits
+mongodb_uri = os.environ.get("MONGODB_URI", "")
+if mongodb_uri:
+    max_pool_size = os.environ.get("MONGODB_MAX_POOL_SIZE", "5")
+    if "maxPoolSize=" not in mongodb_uri:
+        separator = "&" if "?" in mongodb_uri else "?"
+        mongodb_uri = f"{mongodb_uri}{separator}maxPoolSize={max_pool_size}"
+        os.environ["MONGODB_URI"] = mongodb_uri
 import json
 import hashlib
 
@@ -123,6 +132,15 @@ async def lifespan(app: FastAPI):
     try:
         if hasattr(app.state, "scheduling_service") and app.state.scheduling_service:
             app.state.scheduling_service.stop_local_scheduler()
+        
+        # Clean up MCP server sessions
+        try:
+            from app.tools.mcp.mongodb_mcp_tool import mongodb_mcp_tool
+            await mongodb_mcp_tool._mcp_session_manager.close()
+            logging.info("Closed MongoDB MCP server sessions.")
+        except Exception as e:
+            logging.error(f"Error closing MongoDB MCP sessions on shutdown: {e}")
+
         db_service.disconnect()
         logging.info("Database service disconnected successfully.")
     except Exception as e:
