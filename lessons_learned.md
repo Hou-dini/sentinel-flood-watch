@@ -126,5 +126,14 @@ This document captures engineering lessons, technical challenges, options consid
 * **Problem:** Running ADK evaluations in multi-regions like `eu` causes predefined metrics (`safety_v1`, `hallucinations_v1`) utilizing the Vertex Rapid Evaluation Service to fail with `400 FAILED_PRECONDITION: Unsupported region for Vertex Evaluation Service: eu`. 
 * **Solution:** Decouple the agent model from the evaluation judge model. While production requirements dictate using `gemini-3.5-flash` in the `eu` region for the agent, configure custom LLM-as-judge metrics (like `rubric_based_final_response_quality_v1`) to use a model fully supported for generation in that region, such as `gemini-3.1-flash-lite`. This ensures the evaluation suite runs and validates successfully in the production environment.
 
-
-
+## 26. Hybrid Automated Scheduling, Non-Blocking Webhooks, and Naming Constraints in Serverless Deployments
+* **Problem:** Implementing an automated scheduled monitoring feature that runs reliably in both serverless environments (e.g. Google Cloud Run, where containers scale to zero when idle and internal cron threads are suspended) and local development. In addition, when executing scheduled scans asynchronously to prevent client connection timeouts, passing generated session IDs to Vertex AI Agent Engine session services resulted in `400 INVALID_ARGUMENT: Invalid Session resource name` errors.
+* **Root Cause:** 
+  1. Internal cron libraries (like APScheduler or Celery Beat) rely on persistent container runtimes, making them unsuitable for serverless platforms that scale down to zero.
+  2. Sequential scans of multiple high-risk coordinates can take up to 2-3 minutes to run, which exceeds typical HTTP timeout limits if executed synchronously.
+  3. Vertex AI Agent Engine session resource names (`reasoningEngines/{id}/sessions/{session_id}`) enforce strict GCP resource naming constraints (`^[a-z0-9-]+$`). Our initial session ID format used underscores (`scheduled_run_YYYY-MM-DD_suffix`) which is invalid under this regex.
+* **Solution:**
+  1. Implemented a **hybrid scheduling architecture**: exposed a secure webhook endpoint `POST /api/v1/jobs/scan` for external schedulers (such as Google Cloud Scheduler) to trigger in production, alongside a lightweight local background `asyncio` task loop managed via FastAPI's `lifespan` handler when `ENABLE_LOCAL_SCHEDULER=true` is set.
+  2. Enqueued the scheduled scan execution asynchronously in FastAPI's `BackgroundTasks` queue, returning a `202 Accepted` status immediately to avoid HTTP timeouts.
+  3. Replaced underscores with dashes in the session ID format (`scheduled-run-YYYY-MM-DD-suffix`), satisfying the `^[a-z0-9-]+$` regex constraints of Vertex AI and eliminating the `INVALID_ARGUMENT` errors.
+* **What to Avoid:** Avoid using underscores or special characters in session IDs when integrating with cloud-managed agent platforms. Always leverage non-blocking async execution queues when calling multiple long-running LLM and remote sensing imagery pipelines in a single HTTP request.

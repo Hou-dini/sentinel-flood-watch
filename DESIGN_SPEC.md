@@ -57,3 +57,20 @@ The system integrates Google Earth Engine (Sentinel-2 imagery), Google ADK (for 
 - **Severe Cloud Cover:** Sentinel-2 images are frequently cloudy in coastal West Africa. The GEE pipeline must filter for lowest cloud percentage or use composite median imaging.
 - **Database Connection Failure:** If MongoDB is down, log alerts locally to `alerts_db.json` and report warning to client without failing the entire transaction.
 - **Out of Accra Coordinates:** If coordinates are provided outside the Greater Accra region, notify the user that monitoring is restricted to Accra's waterways.
+
+## Scheduled Automated Monitoring
+
+### 1. Hybrid Scheduling Architecture
+To support both containerized cloud deployment (Google Cloud Run) and local development, the scheduling system uses a hybrid architecture:
+- **Serverless Webhook Trigger (Production):** The backend exposes a secure HTTP endpoint `POST /api/v1/jobs/scan`. An external cron service (like Google Cloud Scheduler) calls this endpoint periodically.
+- **Lifespan Task Loop (Local Development):** When `ENABLE_LOCAL_SCHEDULER=true` is set, a lightweight background `asyncio` loop is spawned in FastAPI's startup lifespan hook, executing scans at configured intervals (`LOCAL_SCHEDULER_INTERVAL_SECONDS`).
+
+### 2. Authorization and Security
+- All webhook requests must present an `X-Job-Key` header matching `JOB_API_KEY` from the environment.
+- In production, if `JOB_API_KEY` is not set, requests fail with a `500 Internal Server Error` to prevent unauthenticated execution. Locally, the system defaults to `"sentinel_dev_job_key"` if unset.
+
+### 3. Non-Blocking Execution
+- When the webhook is triggered, scans are queued using FastAPI's `BackgroundTasks` and the server immediately returns a `202 Accepted` status to prevent HTTP client timeouts.
+
+### 4. Naming Constraints
+- Scan session IDs are formatted as `scheduled-run-YYYY-MM-DD-suffix` using only lowercase alphanumeric characters and dashes to comply with Vertex AI resource name constraints (`^[a-z0-9-]+$`).

@@ -3,9 +3,9 @@
 ## 1. System Description & Architecture
 Sentinel Flood-Watch is an agentic AI system designed to monitor urban waterways, floodplains, and Ramsar sites in Accra, Ghana. The system detects illegal structures and waste dumping that block drainage channels and cause severe seasonal flooding.
 
-The system uses a **FastAPI backend** that hosts a Google ADK AI Agent utilizing **Gemini 2.5 Flash**. The backend connects to **Google Earth Engine** to pull Sentinel-2 satellite imagery. It runs on a dual trigger:
-- **On-Demand Scans:** Triggered via a web chat interface.
-- **Scheduled Scans:** Executed automatically (every 5 days) to check risk zones.
+The system uses a **FastAPI backend** that hosts a Google ADK AI Agent utilizing **Gemini 2.5 Flash**. The backend connects to **Google Earth Engine** to pull Sentinel-2 satellite imagery. It supports two scan triggers:
+- **On-Demand Scans:** Triggered interactively via the web dashboard chat interface.
+- **Scheduled Scans:** Executed automatically via a hybrid scheduling architecture. In production, an external cron service (like Google Cloud Scheduler) triggers the secure, token-authorized `POST /api/v1/jobs/scan` webhook. Locally, a background task loop runs within the application's lifespan hook (enabled via `ENABLE_LOCAL_SCHEDULER`). Scan requests are enqueued asynchronously in FastAPI's `BackgroundTasks` to prevent HTTP timeouts.
 
 A **Vanilla HTML/CSS/JS web dashboard** provides:
 - Leaflet-based interactive map displaying risk zones and alert pins.
@@ -63,6 +63,7 @@ A **Vanilla HTML/CSS/JS web dashboard** provides:
 - **MongoDB Tool Filter:** The MCP toolset exposes only `find` and `insert-many` to the agent via `tool_filter`, restricting the attack surface and preventing unintended database mutations (delete, update).
 - **Production Persistent State Migration:** Transitioned session and long-term memory management from transient local memory (`InMemorySessionService` and `InMemoryMemoryService`) to environment-aware persistence. In production, the system dynamically binds to Vertex AI Session Service and Memory Bank Service to support serverless container scaling, while preserving local in-memory fallbacks to keep offline developer tests fast and dependency-free.
 - **Custom Security Guardrails with Model Armor & Safety Callbacks:** Implemented a custom ADK safety plugin (`ModelArmorSafetyPlugin`) that intercepts LLM requests and responses for input/output sanitization. Added a fail-open policy for connection timeouts and fail-closed for violations. To guarantee prompt injection defense and jailbreak resilience, we designed an async `after_model_callback` (`enforce_refusal_callback`) that programmatically detects prompt injection attempts and prepends standard refusal statements to the response when the model fails to explicitly format them, ensuring 100% safety and evaluation test compliance.
+- **Hybrid Scheduling & Non-Blocking Background Processing:** Designed a hybrid automated monitoring model utilizing Google Cloud Scheduler (via secure webhook `POST /api/v1/jobs/scan`) for production, and an internal lifespan loop in local environments. Triggered scans run asynchronously in FastAPI's `BackgroundTasks` queue to return a quick `202 Accepted` response, protecting against connection timeouts during multi-site satellite scans. Replaced underscores with dashes in the session ID format (`scheduled-run-YYYY-MM-DD-suffix`) to conform with Vertex AI reasoning engine naming constraints (`^[a-z0-9-]+$`).
 
 
 ## 4. Key Features
@@ -73,6 +74,7 @@ A **Vanilla HTML/CSS/JS web dashboard** provides:
 - **Grounded Geocoding Search:** Real-time coordinate lookup for arbitrary Accra landmarks (such as Weija Dam) via OpenStreetMap Nominatim and DuckDuckGo API integration to prevent coordinate hallucinations.
 - **Interactive Legend Overlay:** Floating glassmorphic legend next to the satellite image slider to explain NDVI, MNDWI, and RGB band outputs in non-technical terms with live updates.
 - **Production Containerization:** Easy one-command local deploy utilizing Docker Compose linking FastAPI and MongoDB with volume mapping for persistence and GCP service account keys.
+- **Automated Scheduled Monitoring:** Hybrid automated scheduling system supporting secure token-authorized cloud webhooks (`POST /api/v1/jobs/scan`) for production cron jobs and local lifespan background loops (`ENABLE_LOCAL_SCHEDULER`) for developer verification.
 
 ## 5. Future Roadmap
 - **Computer Vision Model Tuning:** Train a custom YOLO model to detect roofing sheets from high-resolution imagery.
