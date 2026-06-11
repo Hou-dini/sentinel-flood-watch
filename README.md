@@ -3,7 +3,7 @@
 [![CI/CD Pipeline](https://github.com/Hou-dini/sentinel-flood-watch/actions/workflows/ci.yml/badge.svg)](https://github.com/Hou-dini/sentinel-flood-watch/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 [![Built with Google ADK](https://img.shields.io/badge/Built%20with-Google%20ADK-green)](https://github.com/GoogleCloudPlatform/agent-starter-pack)
-[![Model](https://img.shields.io/badge/Reasoning%20Model-Gemini%202.5%20Flash-orange)](https://deepmind.google/technologies/gemini/)
+[![Model](https://img.shields.io/badge/Reasoning%20Model-Gemini%203.5%20Flash-orange)](https://deepmind.google/technologies/gemini/)
 
 Sentinel Flood-Watch is an intelligent, agentic remote sensing and monitoring system designed to proactively detect and report human encroachment, illegal construction, and waste dumping within Accra's critical ecological and flood-prone zones (specifically Odaw River, Korle Lagoon, Sakumono Ramsar Site, and Densu Delta Ramsar Site).
 
@@ -24,7 +24,7 @@ graph TD
     subgraph FastAPI Backend App
         Backend -->|Orchestrates| AgentService[Agent Service]
         AgentService -->|Invokes| ADK[Google ADK Runner]
-        ADK -->|Gemini 2.5 Flash| LLM[Vertex AI Model API]
+        ADK -->|Gemini 3.5 Flash| LLM[Vertex AI Model API]
         
         ADK -->|Tools| scan_zone_tool[scan_zone_tool]
         scan_zone_tool -->|Queries| GEE[Earth Engine Service]
