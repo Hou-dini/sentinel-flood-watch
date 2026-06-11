@@ -99,15 +99,18 @@ Create a `.env` file in both the project root and the `backend/` directory based
 # GCP Platform & Vertex AI Config
 GOOGLE_CLOUD_PROJECT=your-gcp-project-id
 GOOGLE_CLOUD_LOCATION=us-central1
+GOOGLE_CLOUD_MODEL=gemini-3.5-flash
 GOOGLE_GENAI_USE_VERTEXAI=True
 GOOGLE_APPLICATION_CREDENTIALS=C:/path/to/credentials/gee-key.json
+MODEL_ARMOR_TEMPLATE=projects/your-gcp-project-id/locations/your-location/templates/your-template-id
 
 # Earth Engine Service Account Key
 GEE_SERVICE_ACCOUNT_KEY_PATH=C:/path/to/credentials/gee-key.json
 
 # MongoDB Database Configuration
-MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/
+MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/?appName=Sentinel-Cluster&maxPoolSize=5
 MONGODB_DB_NAME=sentinel_flood_watch
+MONGODB_MAX_POOL_SIZE=5
 
 # Arize Telemetry & Observability
 PHOENIX_PROJECT_NAME=sentinel-flood-watch
