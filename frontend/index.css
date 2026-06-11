@@ -946,3 +946,218 @@ body {
     margin-top: 2px;
     letter-spacing: 0.5px;
 }
+
+/* ==============================================================================
+   Custom Rich Report Card & Refusal Card Layouts
+   ============================================================================== */
+
+.report-card {
+    background: rgba(255, 255, 255, 0.025);
+    border: 1px solid var(--border-color);
+    border-radius: 0 16px 16px 16px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    box-shadow: var(--glass-shadow);
+    transition: all 0.3s ease;
+    width: 100%;
+}
+
+.report-card:hover {
+    border-color: rgba(0, 242, 254, 0.15);
+}
+
+.report-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    padding-bottom: 10px;
+}
+
+.report-title-section {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.report-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'Outfit', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.report-title i {
+    font-size: 15px;
+}
+
+.text-cyan {
+    color: var(--accent-cyan);
+}
+
+.report-subtitle {
+    font-size: 11px;
+    color: var(--text-secondary);
+}
+
+.metrics-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-top: 4px;
+}
+
+.metric-card {
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    transition: border-color 0.2s ease;
+}
+
+.metric-card.alert-border {
+    border-color: rgba(255, 75, 92, 0.3) !important;
+}
+
+.metric-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 10px;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+.metric-header i {
+    font-size: 11px;
+}
+
+.metric-value-row {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+}
+
+.metric-val {
+    font-size: 16px;
+    font-weight: 700;
+    font-family: monospace;
+    color: var(--text-primary);
+}
+
+.metric-change-label {
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.4);
+}
+
+.metric-trend {
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.text-red {
+    color: var(--alert-red) !important;
+}
+
+.text-green {
+    color: var(--alert-green) !important;
+}
+
+.report-narrative {
+    font-size: 12.5px;
+    line-height: 1.5;
+    color: var(--text-primary);
+}
+
+.actions-log {
+    border-top: 1px dashed var(--border-color);
+    padding-top: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.actions-title {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    letter-spacing: 0.5px;
+}
+
+.action-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    font-size: 11.5px;
+    line-height: 1.45;
+}
+
+.action-item i {
+    font-size: 11px;
+    margin-top: 3px;
+}
+
+/* Refusal Card Layout */
+.refusal-card {
+    background: rgba(255, 75, 92, 0.04);
+    border: 1px solid rgba(255, 75, 92, 0.2);
+    border-radius: 0 16px 16px 16px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    box-shadow: var(--glass-shadow);
+    width: 100%;
+}
+
+.refusal-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--alert-red);
+    font-family: 'Outfit', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.refusal-text {
+    font-size: 12.5px;
+    line-height: 1.5;
+    color: var(--text-primary);
+}
+
+.report-warning-banner {
+    background: rgba(255, 75, 92, 0.08);
+    border: 1px solid rgba(255, 75, 92, 0.25);
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 12px;
+    line-height: 1.45;
+    color: var(--text-primary);
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+
+.report-warning-banner i {
+    color: var(--alert-red);
+    font-size: 14px;
+    margin-top: 2px;
+}
+
+

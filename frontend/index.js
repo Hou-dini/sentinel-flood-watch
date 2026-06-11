@@ -440,10 +440,328 @@ function parseAgentJsonResponse(text) {
  * Renders agent_summary or non-JSON context as prose and the full JSON as a collapsible
  * <details> block so the user can inspect the raw schema if needed.
  */
-function buildStructuredBubble(parsed) {
-    const summaryHtml = renderMarkdown(parsed.summary);
-    let detailRows = "";
+/**
+ * Helper to split and parse narrative text and actions list.
+ */
+function parseReportText(text) {
+    let narrative = text;
+    let actions = [];
+    
+    const actionDelimiter = /DATABASE & NOTIFICATION ACTIONS:|DATABASE & NOTIFICATIONS:|ACTIONS EXECUTED:/i;
+    const parts = text.split(actionDelimiter);
+    
+    const checkFailure = (str) => {
+        const lower = str.toLowerCase();
+        return lower.includes("fail") || 
+               lower.includes("error") || 
+               lower.includes("unreachable") || 
+               lower.includes("unable") || 
+               lower.includes("could not") || 
+               lower.includes("cannot") ||
+               lower.includes("refuse") ||
+               lower.includes("denied");
+    };
 
+    if (parts.length > 1) {
+        narrative = parts[0].trim();
+        const actionsSection = parts[1].trim();
+        const actionLines = actionsSection.split(/\r?\n/);
+        for (let line of actionLines) {
+            line = line.trim();
+            if (!line) continue;
+            const cleanLine = line.replace(/^[0-9]+\.\s*|^-\s*/, '').trim();
+            if (cleanLine) {
+                actions.push({
+                    text: cleanLine,
+                    status: checkFailure(cleanLine) ? 'failure' : 'success'
+                });
+            }
+        }
+    } else {
+        // No explicit header. Split the narrative into sentences and extract database/SMS logs.
+        // Splits sentences by period followed by space.
+        const sentences = narrative.split(/(?<=\.)\s+/);
+        const remainingSentences = [];
+        
+        for (let sentence of sentences) {
+            sentence = sentence.trim();
+            if (!sentence) continue;
+            
+            const isDbAction = sentence.toLowerCase().includes("database") || 
+                               sentence.toLowerCase().includes("logged in the") ||
+                               sentence.toLowerCase().includes("inserted successfully") ||
+                               sentence.toLowerCase().includes("logged into the");
+                               
+            const isSmsAction = sentence.toLowerCase().includes("sms") || 
+                                sentence.toLowerCase().includes("twilio") ||
+                                sentence.toLowerCase().includes("dispatched to") ||
+                                sentence.toLowerCase().includes("notification was immediately");
+                                
+            if (isDbAction || isSmsAction) {
+                actions.push({
+                    text: sentence,
+                    status: checkFailure(sentence) ? 'failure' : 'success'
+                });
+            } else {
+                remainingSentences.push(sentence);
+            }
+        }
+        
+        if (actions.length > 0) {
+            narrative = remainingSentences.join(" ");
+        }
+    }
+    
+    narrative = narrative.replace(/^ECOLOGICAL MONITORING REPORT:\s*/i, '').trim();
+    return { narrative, actions };
+}
+
+/**
+ * Extract NDVI and MNDWI metrics from narrative.
+ */
+function extractMetrics(text) {
+    const metrics = { ndvi: null, mndwi: null };
+    
+    // NDVI Match
+    const ndviMatch = text.match(/NDVI[^\n]*?changed\s+by\s+([+-]?[0-9.]+)%\s*\(from\s+([0-9.-]+)\s+to\s+([0-9.-]+)\)/i)
+                   || text.match(/NDVI[^\n]*?from\s+([0-9.-]+)\s+to\s+([0-9.-]+)/i);
+    if (ndviMatch) {
+        if (ndviMatch.length === 4) {
+            metrics.ndvi = {
+                change: parseFloat(ndviMatch[1]),
+                from: parseFloat(ndviMatch[2]),
+                to: parseFloat(ndviMatch[3]),
+                hasChangePct: true
+            };
+        } else {
+            const from = parseFloat(ndviMatch[1]);
+            const to = parseFloat(ndviMatch[2]);
+            metrics.ndvi = {
+                change: -((from - to) * 100),
+                from: from,
+                to: to,
+                hasChangePct: false
+            };
+        }
+    } else {
+        const ndviPctMatch = text.match(/NDVI[^\n]*?(?:loss|decrease|narrowing)[^\n]*?(\d+)%/i);
+        if (ndviPctMatch) {
+            metrics.ndvi = {
+                change: -parseFloat(ndviPctMatch[1]),
+                hasChangePct: true
+            };
+        }
+    }
+    
+    // MNDWI Match
+    const mndwiMatch = text.match(/MNDWI[^\n]*?changed\s+by\s+([+-]?[0-9.]+)%\s*\(from\s+([0-9.-]+)\s+to\s+([0-9.-]+)\)/i)
+                    || text.match(/MNDWI[^\n]*?from\s+([0-9.-]+)\s+to\s+([0-9.-]+)\)/i)
+                    || text.match(/MNDWI[^\n]*?from\s+([0-9.-]+)\s+to\s+([0-9.-]+)/i);
+    if (mndwiMatch) {
+        if (mndwiMatch.length === 4) {
+            metrics.mndwi = {
+                change: parseFloat(mndwiMatch[1]),
+                from: parseFloat(mndwiMatch[2]),
+                to: parseFloat(mndwiMatch[3]),
+                hasChangePct: true
+            };
+        } else {
+            const from = parseFloat(mndwiMatch[1]);
+            const to = parseFloat(mndwiMatch[2]);
+            metrics.mndwi = {
+                change: -((from - to) * 100),
+                from: from,
+                to: to,
+                hasChangePct: false
+            };
+        }
+    } else {
+        const mndwiPctMatch = text.match(/MNDWI[^\n]*?(?:loss|decrease|narrowing)[^\n]*?(\d+)%/i);
+        if (mndwiPctMatch) {
+            metrics.mndwi = {
+                change: -parseFloat(mndwiPctMatch[1]),
+                hasChangePct: true
+            };
+        }
+    }
+    
+    return metrics;
+}
+
+/**
+ * Builds the inner HTML for a structured agent response bubble.
+ * Renders agent_summary or non-JSON context as prose and the full JSON as a collapsible
+ * <details> block so the user can inspect the raw schema if needed.
+ */
+function buildStructuredBubble(parsed) {
+    const json = parsed.json;
+    
+    const hasReport = json.site_name && json.site_name !== "N/A" && json.site_name !== "None";
+    const isRefusal = !hasReport && 
+                      (parsed.summary.toLowerCase().includes("refuse") || 
+                       parsed.summary.toLowerCase().includes("unauthorized request"));
+                      
+    if (isRefusal) {
+        return `
+            <div class="refusal-card">
+                <div class="refusal-header">
+                    <i class="fa-solid fa-shield-halved text-red"></i>
+                    <span>Security Policy Refusal</span>
+                </div>
+                <div class="refusal-text">${renderMarkdown(parsed.summary)}</div>
+            </div>
+        `;
+    }
+    
+    // If it's a standard ecological report
+    if (json.site_name && json.agent_summary) {
+        const { narrative, actions } = parseReportText(json.agent_summary);
+        const metrics = extractMetrics(json.agent_summary);
+        
+        let severityClass = (json.severity || "low").toLowerCase();
+        
+        let coordsText = "N/A";
+        if (json.coordinates && json.coordinates.latitude !== undefined) {
+            coordsText = `[${json.coordinates.latitude.toFixed(4)}, ${json.coordinates.longitude.toFixed(4)}]`;
+        }
+        
+        // Build metrics HTML
+        let metricsHtml = "";
+        if (metrics.ndvi || metrics.mndwi) {
+            metricsHtml = `<div class="metrics-grid">`;
+            
+            if (metrics.ndvi) {
+                const isDecreasing = metrics.ndvi.to !== undefined ? metrics.ndvi.to < metrics.ndvi.from : metrics.ndvi.change < 0;
+                const trendIcon = isDecreasing 
+                    ? `<i class="fa-solid fa-arrow-trend-down text-red"></i>`
+                    : `<i class="fa-solid fa-arrow-trend-up text-green"></i>`;
+                const trendText = isDecreasing ? "Vegetation Loss" : "Vegetation Stable";
+                const changeSign = metrics.ndvi.change > 0 ? "+" : "";
+                const changeVal = metrics.ndvi.change !== undefined ? `${changeSign}${metrics.ndvi.change.toFixed(1)}%` : "";
+                
+                metricsHtml += `
+                    <div class="metric-card ${isDecreasing && json.severity !== 'Low' ? 'alert-border' : ''}">
+                        <div class="metric-header">
+                            ${trendIcon}
+                            <span>NDVI (Vegetation Index)</span>
+                        </div>
+                        <div class="metric-value-row">
+                            <span class="metric-val">${metrics.ndvi.to !== undefined ? metrics.ndvi.to.toFixed(3) : changeVal}</span>
+                            ${metrics.ndvi.from !== undefined ? `<span class="metric-change-label">from ${metrics.ndvi.from.toFixed(3)}</span>` : ''}
+                        </div>
+                        <div class="metric-trend ${isDecreasing && json.severity !== 'Low' ? 'text-red' : 'text-green'}">
+                            ${trendText} ${changeVal ? `(${changeVal})` : ''}
+                        </div>
+                    </div>
+                `;
+            }
+            
+            if (metrics.mndwi) {
+                // If MNDWI increases (becomes less negative), it denotes water index increase, i.e. water channel alteration
+                const isAltered = metrics.mndwi.to !== undefined ? metrics.mndwi.to > metrics.mndwi.from : metrics.mndwi.change < 0;
+                const trendIcon = isAltered 
+                    ? `<i class="fa-solid fa-water text-red"></i>`
+                    : `<i class="fa-solid fa-water text-green"></i>`;
+                const trendText = isAltered ? "Channel Altered" : "Water Stable";
+                const changeSign = metrics.mndwi.change > 0 ? "+" : "";
+                const changeVal = metrics.mndwi.change !== undefined ? `${changeSign}${metrics.mndwi.change.toFixed(1)}%` : "";
+                
+                metricsHtml += `
+                    <div class="metric-card ${isAltered && json.severity !== 'Low' ? 'alert-border' : ''}">
+                        <div class="metric-header">
+                            ${trendIcon}
+                            <span>MNDWI (Water Index)</span>
+                        </div>
+                        <div class="metric-value-row">
+                            <span class="metric-val">${metrics.mndwi.to !== undefined ? metrics.mndwi.to.toFixed(3) : changeVal}</span>
+                            ${metrics.mndwi.from !== undefined ? `<span class="metric-change-label">from ${metrics.mndwi.from.toFixed(3)}</span>` : ''}
+                        </div>
+                        <div class="metric-trend ${isAltered && json.severity !== 'Low' ? 'text-red' : 'text-green'}">
+                            ${trendText} ${changeVal ? `(${changeVal})` : ''}
+                        </div>
+                    </div>
+                `;
+            }
+            
+            metricsHtml += `</div>`;
+        }
+        
+        // Build actions HTML
+        let actionsHtml = "";
+        if (actions.length > 0) {
+            actionsHtml = `
+                <div class="actions-log">
+                    <div class="actions-title">Actions Executed</div>
+                    ${actions.map(action => {
+                        const iconClass = action.status === 'failure' 
+                            ? 'fa-solid fa-circle-xmark text-red' 
+                            : 'fa-solid fa-circle-check text-green';
+                        return `
+                            <div class="action-item">
+                                <i class="${iconClass}"></i>
+                                <span>${action.text}</span>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            `;
+        }
+        
+        // Collapsible RAW data
+        let detailRows = Object.entries(json)
+            .filter(([k]) => k !== 'agent_summary')
+            .map(([k, v]) => {
+                const label = k.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+                let valStr = typeof v === 'object' ? JSON.stringify(v) : String(v);
+                return `<tr><td class="json-key">${label}</td><td class="json-val">${valStr}</td></tr>`;
+            }).join('');
+            
+        // Check if there is warning/refusal text outside the JSON block
+        let warningBannerHtml = "";
+        const containsRefusal = parsed.summary && 
+                                (parsed.summary.toLowerCase().includes("refuse") || 
+                                 parsed.summary.toLowerCase().includes("unauthorized request"));
+        if (containsRefusal && parsed.summary !== json.agent_summary) {
+            warningBannerHtml = `
+                <div class="report-warning-banner">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <span>${renderMarkdown(parsed.summary)}</span>
+                </div>
+            `;
+        }
+            
+        return `
+            <div class="report-card">
+                ${warningBannerHtml}
+                <div class="report-header">
+                    <div class="report-title-section">
+                        <div class="report-title">
+                            <i class="fa-solid fa-square-poll-vertical text-cyan"></i>
+                            <span>Sentinel Scan Report</span>
+                        </div>
+                        <div class="report-subtitle">${json.site_name} &nbsp;•&nbsp; ${coordsText}</div>
+                    </div>
+                    <div class="badge-row">
+                        <span class="alert-severity ${severityClass}">${json.severity || 'Low'}</span>
+                    </div>
+                </div>
+                
+                ${metricsHtml}
+                
+                <div class="report-narrative">${renderMarkdown(narrative)}</div>
+                
+                ${actionsHtml}
+                
+                <details class="agent-json-details">
+                    <summary>View structured data</summary>
+                    <table class="agent-json-table"><tbody>${detailRows}</tbody></table>
+                </details>
+            </div>
+        `;
+    }
+    
+    // Fallback if not standard report structure
+    let detailRows = "";
     const formatValue = (v) => {
         if (v === null || v === undefined) return "<em>null</em>";
         if (typeof v === 'object') {
@@ -453,7 +771,6 @@ function buildStructuredBubble(parsed) {
     };
 
     if (Array.isArray(parsed.json)) {
-        // It's a list of records
         detailRows = parsed.json.map((item, idx) => {
             if (item && typeof item === 'object' && !Array.isArray(item)) {
                 const itemRows = Object.entries(item)
@@ -470,8 +787,6 @@ function buildStructuredBubble(parsed) {
             }
         }).join('');
     } else {
-        // It's a single object.
-        // If the main summary is exactly parsed.agent_summary, we can skip showing it in the table to avoid redundancy.
         const filterKey = parsed.summary === parsed.json.agent_summary ? 'agent_summary' : null;
         detailRows = Object.entries(parsed.json)
             .filter(([k]) => k !== filterKey)
@@ -482,7 +797,7 @@ function buildStructuredBubble(parsed) {
     }
 
     return `
-        <div class="bubble-content">${summaryHtml}</div>
+        <div class="bubble-content">${renderMarkdown(parsed.summary)}</div>
         <details class="agent-json-details">
             <summary>View structured data</summary>
             <table class="agent-json-table"><tbody>${detailRows}</tbody></table>
@@ -675,6 +990,7 @@ async function executeAgentChat(messageText) {
                             bubbleElement.innerHTML =
                                 buildStructuredBubble(parsed) +
                                 `<div class="bubble-meta">Agent • Just Now</div>`;
+                            bubbleElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
                         } else {
                             bubbleElement.querySelector(".bubble-meta").innerText = "Agent • Just Now";
                         }
@@ -691,6 +1007,7 @@ async function executeAgentChat(messageText) {
                 bubbleElement.innerHTML =
                     buildStructuredBubble(parsed) +
                     `<div class="bubble-meta">Agent • Just Now</div>`;
+                bubbleElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
             } else {
                 bubbleElement.querySelector(".bubble-meta").innerText = "Agent • Just Now";
             }
