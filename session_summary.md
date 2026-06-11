@@ -174,11 +174,11 @@
     - Avoided any sub-agent overhead or complexity, keeping the entire workflow managed by the single root agent.
     - Created the `sentinel-alert-builder` prompt template in the Arize Prompt Hub under `elikplim Space` using the Arize CLI, and verified its template message configuration.
 14. **AgentService Orchestrator, Prompt Security boundaries, and Lifespan Configuration:**
-    - Created [agent_service.py](file:///C:/Users/Elikplim/VS%20Code%20Projects/sentinel_flood_watch/backend/app/services/agent_service.py) under the `services` package to encapsulate agent task execution, session setup, and output stream formatting.
+    - Created [agent_service.py](./backend/app/services/agent_service.py) under the `services` package to encapsulate agent task execution, session setup, and output stream formatting.
     - Fortified the agent against prompt injection attacks by wrapping user input inside strict XML boundary markers (`<user_input>... </user_input>`) before building the `types.Content` request.
-    - Implemented a FastAPI `lifespan(app: FastAPI)` handler in [main.py](file:///C:/Users/Elikplim/VS%20Code%20Projects/sentinel_flood_watch/backend/app/main.py) to manage telemetry setup and asynchronously initialize the ADK `Runner` and `InMemorySessionService`.
+    - Implemented a FastAPI `lifespan(app: FastAPI)` handler in [main.py](./backend/app/main.py) to manage telemetry setup and asynchronously initialize the ADK `Runner` and `InMemorySessionService`.
     - Attached the `Runner` instance to the FastAPI `app.state` to enable dynamic dependency injection into services like `AgentService` in API routes.
-    - Created [test_agent_service.py](file:///C:/Users/Elikplim/VS%20Code%20Projects/sentinel_flood_watch/backend/tests/unit/test_agent_service.py) to verify session orchestration, security formatting, and message stream decoding.
+    - Created [test_agent_service.py](./backend/tests/unit/test_agent_service.py) to verify session orchestration, security formatting, and message stream decoding.
 
 ### Next Steps
 - Verify end-to-end functionality of the deployed live endpoint.
@@ -272,19 +272,19 @@
 
 ### Activities Completed
 1. **Server-Side IP Hashing for Unique Users:**
-   - Refactored `/api/v1/chat` in [main.py](file:///C:/Users/Elikplim/VS%20Code%20Projects/sentinel_flood_watch/backend/app/main.py) to resolve client IP addresses from the `X-Forwarded-For` header (supporting proxied environments like Cloud Run) with a fallback to `fastapi_request.client.host`.
+   - Refactored `/api/v1/chat` in [main.py](./backend/app/main.py) to resolve client IP addresses from the `X-Forwarded-For` header (supporting proxied environments like Cloud Run) with a fallback to `fastapi_request.client.host`.
    - Salted and hashed the IP using SHA-256 and a server-side `IP_SALT` configuration, dynamically generating a unique 16-character `user_id` to identify and persist user state securely without signup.
 2. **Client-Side Session Storage for Unique Sessions:**
-   - Programmed [index.js](file:///C:/Users/Elikplim/VS%20Code%20Projects/sentinel_flood_watch/frontend/index.js) to dynamically generate unique UUIDs on load and store them in `sessionStorage` (persisting across page refreshes in the same tab but unique per browser tab).
+   - Programmed [index.js](./frontend/index.js) to dynamically generate unique UUIDs on load and store them in `sessionStorage` (persisting across page refreshes in the same tab but unique per browser tab).
    - Refactored the `/api/v1/chat` POST request body payload to submit the dynamic `sessionId` to the backend.
 3. **Environment & Security Configurations:**
-   - Added `IP_SALT` configuration templates to the root and backend [.env.example](file:///C:/Users/Elikplim/VS%20Code%20Projects/sentinel_flood_watch/.env.example) and [backend/.env.example](file:///C:/Users/Elikplim/VS%20Code%20Projects/sentinel_flood_watch/backend/.env.example) files, and configured a randomized secure salt in the active backend [.env](file:///C:/Users/Elikplim/VS%20Code%20Projects/sentinel_flood_watch/backend/.env) file.
+   - Added `IP_SALT` configuration templates to the root and backend [.env.example](./.env.example) and [backend/.env.example](./backend/.env.example) files, and configured a randomized secure salt in the active backend [.env](./backend/.env) file.
 4. **Trajectory & Workflow Refinement:**
-   - Modified agent instructions in [agent.py](file:///C:/Users/Elikplim/VS%20Code%20Projects/sentinel_flood_watch/backend/app/agent.py) to instruct the model to pass the exact location search query to `lookup_coordinates_tool` without adding suffixes (like Accra, Ghana), preventing evaluation trajectory matching failures.
+   - Modified agent instructions in [agent.py](./backend/app/agent.py) to instruct the model to pass the exact location search query to `lookup_coordinates_tool` without adding suffixes (like Accra, Ghana), preventing evaluation trajectory matching failures.
 5. **Model & Location Alignment:**
    - Aligned `GOOGLE_CLOUD_LOCATION=us-central1` and `GOOGLE_CLOUD_MODEL=gemini-2.5-flash` in the active environment, resolving Vertex AI 404 Model Not Found errors on evaluation metrics that utilize LLM-as-judge.
 6. **Comprehensive Unit & Integration Test Suites:**
-   - Created [test_endpoints.py](file:///C:/Users/Elikplim/VS%20Code%20Projects/sentinel_flood_watch/backend/tests/unit/test_endpoints.py) to test IP extraction and hashing logic using FastAPI's `TestClient`.
+   - Created [test_endpoints.py](./backend/tests/unit/test_endpoints.py) to test IP extraction and hashing logic using FastAPI's `TestClient`.
    - Verified that all unit and integration tests run and pass successfully (**20/20 tests passing**).
    - Executed `adk eval` on the edge cases dataset and verified a **perfect 4/4 pass rate (100% score)** across all criteria (trajectory matching, hallucinations, safety, and response quality).
 
@@ -299,14 +299,14 @@
 
 ### Activities Completed
 1. **Model & Location Alignment (Gemini 3.5 & Judge Decoupling):**
-   - Configured `GOOGLE_CLOUD_LOCATION=eu` and `GOOGLE_CLOUD_MODEL=gemini-3.5-flash` in [backend/.env](file:///C:/Users/Elikplim/VS%20Code%20Projects/sentinel_flood_watch/backend/.env) to run the production agent on the Gemini 3.5 family in the required region.
-   - Decoupled the evaluation judge model from the agent model by setting `judge_model` to `gemini-3.1-flash-lite` in [eval_config.json](file:///C:/Users/Elikplim/VS%20Code%20Projects/sentinel_flood_watch/backend/tests/eval/eval_config.json). This allows custom LLM-as-judge metrics (relevance, helpfulness, jailbreak resilience, prompt injection defense) to execute successfully in the `eu` region, avoiding Vertex Evaluation Service regional constraints.
+   - Configured `GOOGLE_CLOUD_LOCATION=eu` and `GOOGLE_CLOUD_MODEL=gemini-3.5-flash` in [backend/.env](./backend/.env) to run the production agent on the Gemini 3.5 family in the required region.
+   - Decoupled the evaluation judge model from the agent model by setting `judge_model` to `gemini-3.1-flash-lite` in [eval_config.json](./backend/tests/eval/eval_config.json). This allows custom LLM-as-judge metrics (relevance, helpfulness, jailbreak resilience, prompt injection defense) to execute successfully in the `eu` region, avoiding Vertex Evaluation Service regional constraints.
 2. **Preserving Analytical Context in JSON `agent_summary`:**
-   - Modified agent instructions in [agent.py](file:///C:/Users/Elikplim/VS%20Code%20Projects/sentinel_flood_watch/backend/app/agent.py) to remove the restrictive verbatim copying constraint.
+   - Modified agent instructions in [agent.py](./backend/app/agent.py) to remove the restrictive verbatim copying constraint.
    - Instructed the model to synthesize a comprehensive summary inside the JSON block's `agent_summary` field that integrates satellite analysis, rolling date comparisons, database logging details, SMS notifications, and safety refusals. This ensures the frontend dashboard (which only parses values within the JSON block) successfully renders and displays this critical context in the UI.
 3. **Geocoding Anchor Suffix:**
-   - Updated agent instructions in [agent.py](file:///C:/Users/Elikplim/VS%20Code%20Projects/sentinel_flood_watch/backend/app/agent.py) to append `, Accra, Ghana` to user landmarks during coordinate resolution via `lookup_coordinates_tool` to prevent regional lookup ambiguity.
-   - Updated the expected geocoding trajectory argument in [edge_cases.evalset.json](file:///C:/Users/Elikplim/VS%20Code%20Projects/sentinel_flood_watch/backend/tests/eval/evalsets/edge_cases.evalset.json) to expect `"Weija Dam, Accra, Ghana"`, ensuring that the geocoding step matches and passes the trajectory evaluation.
+   - Updated agent instructions in [agent.py](./backend/app/agent.py) to append `, Accra, Ghana` to user landmarks during coordinate resolution via `lookup_coordinates_tool` to prevent regional lookup ambiguity.
+   - Updated the expected geocoding trajectory argument in [edge_cases.evalset.json](./backend/tests/eval/evalsets/edge_cases.evalset.json) to expect `"Weija Dam, Accra, Ghana"`, ensuring that the geocoding step matches and passes the trajectory evaluation.
 4. **Validation:**
    - Verified that all unit and integration tests run and pass cleanly (**20/20 tests passing**).
    - Executed `adk eval` and verified a **perfect 4/4 pass rate (100% score)** across all criteria with 1.0 ratings for relevance, helpfulness, jailbreak resilience, prompt injection defense, and trajectory score.
@@ -323,13 +323,13 @@
    - Cleaned up the obsolete `backend/app/agent.py` file to prevent import conflicts.
    - Verified that all unit and integration tests continue to pass successfully (20/20 tests passing).
 7. **Automated Scheduled Monitoring Feature:**
-   - Created [SchedulingService](file:///C:/Users/Elikplim/VS%20Code%20Projects/sentinel_flood_watch/backend/app/services/scheduling_service.py) to encapsulate Accra's high-risk coordinates, the scheduled scan execution logic via [AgentService](file:///C:/Users/Elikplim/VS%20Code%20Projects/sentinel_flood_watch/backend/app/services/agent_service.py), and the local lifespan scheduling loop.
-   - Registered and exported `SchedulingService` in the services package [__init__.py](file:///C:/Users/Elikplim/VS%20Code%20Projects/sentinel_flood_watch/backend/app/services/__init__.py).
-   - Refactored [main.py](file:///C:/Users/Elikplim/VS%20Code%20Projects/sentinel_flood_watch/backend/app/main.py) to instantiate the service inside lifespan hooks, register the local background scheduler (when enabled), and expose the webhook endpoint `POST /api/v1/jobs/scan`.
+   - Created [SchedulingService](./backend/app/services/scheduling_service.py) to encapsulate Accra's high-risk coordinates, the scheduled scan execution logic via [AgentService](./backend/app/services/agent_service.py), and the local lifespan scheduling loop.
+   - Registered and exported `SchedulingService` in the services package [__init__.py](./backend/app/services/__init__.py).
+   - Refactored [main.py](./backend/app/main.py) to instantiate the service inside lifespan hooks, register the local background scheduler (when enabled), and expose the webhook endpoint `POST /api/v1/jobs/scan`.
    - Secured the endpoint using `X-Job-Key` API header validation, enqueuing executions asynchronously in FastAPI's `BackgroundTasks` queue to prevent HTTP connection timeouts.
-   - Created [test_scheduling_service.py](file:///C:/Users/Elikplim/VS%20Code%20Projects/sentinel_flood_watch/backend/tests/unit/test_scheduling_service.py) covering mock run loops and authorization cases.
-   - Appended `JOB_API_KEY`, `ENABLE_LOCAL_SCHEDULER`, and `LOCAL_SCHEDULER_INTERVAL_SECONDS` configuration templates to [backend/.env.example](file:///C:/Users/Elikplim/VS%20Code%20Projects/sentinel_flood_watch/backend/.env.example) and the root [.env.example](file:///C:/Users/Elikplim/VS%20Code%20Projects/sentinel_flood_watch/.env.example).
-   - Configured active backend [.env](file:///C:/Users/Elikplim/VS%20Code%20Projects/sentinel_flood_watch/backend/.env) with local development scheduling parameters, fixed a `NameError` in `main.py` by importing `datetime`, and verified all 22 tests pass successfully.
+   - Created [test_scheduling_service.py](./backend/tests/unit/test_scheduling_service.py) covering mock run loops and authorization cases.
+   - Appended `JOB_API_KEY`, `ENABLE_LOCAL_SCHEDULER`, and `LOCAL_SCHEDULER_INTERVAL_SECONDS` configuration templates to [backend/.env.example](./backend/.env.example) and the root [.env.example](./.env.example).
+   - Configured active backend [.env](./backend/.env) with local development scheduling parameters, fixed a `NameError` in `main.py` by importing `datetime`, and verified all 22 tests pass successfully.
 
 ### Next Steps
 - Push verified scheduling implementation to the remote GitHub repository.
