@@ -4,6 +4,13 @@
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 [![Built with Google ADK](https://img.shields.io/badge/Built%20with-Google%20ADK-green)](https://github.com/GoogleCloudPlatform/agent-starter-pack)
 [![Model](https://img.shields.io/badge/Reasoning%20Model-Gemini%203.5%20Flash-orange)](https://deepmind.google/technologies/gemini/)
+[![Award](https://img.shields.io/badge/🏆%203rd%20Place-MongoDB%20Atlas%20Track-47A248)](https://devpost.com/)
+
+<p align="center">
+   <img src="devpost-winner-badge.png" width="80" alt="Devpost Winner Badge"/>
+   <br/>
+   <strong>🏆 3rd Place — MongoDB Atlas Track</strong> | Google Cloud Rapid Agent Hackathon
+</p>
 
 Sentinel Flood-Watch is an intelligent, agentic remote sensing and monitoring system designed to proactively detect and report human encroachment, illegal construction, and waste dumping within Accra's critical ecological and flood-prone zones (specifically Odaw River, Korle Lagoon, Sakumono Ramsar Site, and Densu Delta Ramsar Site).
 
